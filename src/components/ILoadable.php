@@ -10,5 +10,5 @@ namespace Deepr\components;
  */
 interface ILoadable
 {
-    public function load(): array;
+    public function load(int $offset, ?int $length): array;
 }

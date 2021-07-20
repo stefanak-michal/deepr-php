@@ -29,17 +29,6 @@ class Collection implements IComponent
     }
 
     /**
-     * Remove child from collection
-     * @param IComponent $component
-     */
-    public function remove(IComponent $component)
-    {
-        $key = array_search($component, $this->children);
-        if ($key !== false)
-            unset($this->children[$key]);
-    }
-
-    /**
      * Get list of children
      * @return IComponent[]
      */

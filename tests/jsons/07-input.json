@@ -1,0 +1,12 @@
+{
+  "movies": {
+    "[]": 20,
+    "=>": {
+      "title": true,
+      "getActors=>actors": {
+        "()": [],
+        "name": true
+      }
+    }
+  }
+}

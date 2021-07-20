@@ -1,0 +1,8 @@
+{
+  "movies": {
+    "[]": 20,
+    "items=>": {
+      "title": true
+    }
+  }
+}

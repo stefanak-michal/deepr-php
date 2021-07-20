@@ -1,0 +1,10 @@
+{
+  "movies=>": {
+    "[]": [
+      0,
+      2
+    ],
+    "title": true,
+    "released": true
+  }
+}

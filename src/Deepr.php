@@ -86,27 +86,26 @@ final class Deepr
             } elseif ($k === '[]' && !empty($action)) {
                 if (self::$debug)
                     var_dump($action . ' []');
-                if (!($root instanceof ILoadable))
-                    throw new Exception('You are trying access collection on not loadable object');
+                if ($root instanceof ILoadable) {
+                    $offset = 0;
+                    $length = null;
+                    if (is_int($v)) {
+                        $offset = $v;
+                        $length = 1;
+                    } elseif (is_array($v)) {
+                        $offset = $v[0] ?? 0;
+                        $length = $v[1] ?? null;
+                    }
 
-                $offset = 0;
-                $length = null;
-                if (is_int($v)) {
-                    $offset = $v;
-                    $length = 1;
-                } elseif (is_array($v)) {
-                    $offset = $v[0] ?? 0;
-                    $length = $v[1] ?? null;
+                    $tmpValues = $values;
+                    unset($tmpValues['[]']);
+                    foreach ($root->load($offset, $length) as $item) {
+                        $this->recursion($item, $action, $tmpValues);
+                        $root->add($item);
+                    }
+                } else {
+                    throw new Exception('To access collection of class it has to implement ILoadable interface');
                 }
-
-                $items = $root->load();
-                $tmpValues = $values;
-                unset($tmpValues['[]']);
-                foreach (array_slice($items, $offset, $length) as $item) {
-                    $this->recursion($item, $action, $tmpValues);
-                    $root->add($item);
-                }
-
                 return;
             } elseif ($k === '()') {
                 continue;
@@ -115,18 +114,19 @@ final class Deepr
                     var_dump($key . ' ()');
 
                 $data = $root->{$key}(...$v['()']);
-                if (!($data instanceof Collection))
+                if ($data instanceof Collection) {
+                    $nest = $this->isNest($k);
+                    foreach ($data->getChildren() as $child) {
+                        $this->recursion($child, $key, $v);
+                        if (!$nest)
+                            $root->add($child);
+                    }
+
+                    if ($nest)
+                        $root->add($data, $this->getKey($k));
+                } else {
                     throw new Exception('Method response has to be Collection');
-
-                $nest = $this->isNest($k);
-                foreach ($data->getChildren() as $child) {
-                    $this->recursion($child, $key, $v);
-                    if (!$nest)
-                        $root->add($child);
                 }
-
-                if ($nest)
-                    $root->add($data, $this->getKey($k));
             } elseif ($v === true) {
                 if (self::$debug)
                     var_dump($action . ' ' . $k . ' true');
@@ -147,10 +147,6 @@ final class Deepr
                     if (self::$debug)
                         var_dump($action . ' array unnest');
                     $this->recursion($root, $this->getKey($k, false), $v);
-                } else {
-                    if (self::$debug)
-                        var_dump($action . ' array iterate');
-                    $this->recursion($root, $k, $v);
                 }
             }
         }

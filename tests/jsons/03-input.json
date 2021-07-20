@@ -1,0 +1,12 @@
+{
+  "movies": {
+    "=>items": {
+      "[]": [
+        20,
+        3
+      ],
+      "title": true,
+      "released": true
+    }
+  }
+}

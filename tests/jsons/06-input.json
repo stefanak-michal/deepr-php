@@ -1,0 +1,20 @@
+{
+  "movies": [
+    {
+      "getByTitle=>": {
+        "()": [
+          "Top Gun"
+        ],
+        "title": true
+      }
+    },
+    {
+      "getByTitle=>": {
+        "()": [
+          "The Matrix"
+        ],
+        "title": true
+      }
+    }
+  ]
+}

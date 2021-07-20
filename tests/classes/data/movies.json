@@ -1,0 +1,230 @@
+[
+  {
+    "_id": 0,
+    "title": "The Matrix",
+    "released": 1999,
+    "tagline": "Welcome to the Real World"
+  },
+  {
+    "_id": 9,
+    "title": "The Matrix Reloaded",
+    "released": 2003,
+    "tagline": "Free your mind"
+  },
+  {
+    "_id": 10,
+    "title": "The Matrix Revolutions",
+    "released": 2003,
+    "tagline": "Everything that has a beginning has an end"
+  },
+  {
+    "_id": 11,
+    "title": "The Devil's Advocate",
+    "released": 1997,
+    "tagline": "Evil has its winning ways"
+  },
+  {
+    "_id": 15,
+    "title": "A Few Good Men",
+    "released": 1992,
+    "tagline": "In the heart of the nation's capital, in a courthouse of the U.S. government, one man will stop at nothing to keep his honor, and one will stop at nothing to find the truth."
+  },
+  {
+    "_id": 29,
+    "title": "Top Gun",
+    "released": 1986,
+    "tagline": "I feel the need, the need for speed."
+  },
+  {
+    "_id": 37,
+    "title": "Jerry Maguire",
+    "released": 2000,
+    "tagline": "The rest of his life begins now."
+  },
+  {
+    "_id": 46,
+    "title": "Stand By Me",
+    "released": 1986,
+    "tagline": "For some, it's the last real taste of innocence, and the first real taste of life. But for everyone, it's the time that memories are made of."
+  },
+  {
+    "_id": 52,
+    "title": "As Good as It Gets",
+    "released": 1997,
+    "tagline": "A comedy from the heart that goes for the throat."
+  },
+  {
+    "_id": 56,
+    "title": "What Dreams May Come",
+    "released": 1998,
+    "tagline": "After life there is more. The end is just the beginning."
+  },
+  {
+    "_id": 62,
+    "title": "Snow Falling on Cedars",
+    "released": 1999,
+    "tagline": "First loves last. Forever."
+  },
+  {
+    "_id": 67,
+    "title": "You've Got Mail",
+    "released": 1998,
+    "tagline": "At odds in life... in love on-line."
+  },
+  {
+    "_id": 73,
+    "title": "Sleepless in Seattle",
+    "released": 1993,
+    "tagline": "What if someone you never met, someone you never saw, someone you never knew was the only someone for you?"
+  },
+  {
+    "_id": 78,
+    "title": "Joe Versus the Volcano",
+    "released": 1990,
+    "tagline": "A story of love, lava and burning desire."
+  },
+  {
+    "_id": 81,
+    "title": "When Harry Met Sally",
+    "released": 1998,
+    "tagline": "Can two friends sleep together and still love each other in the morning?"
+  },
+  {
+    "_id": 85,
+    "title": "That Thing You Do",
+    "released": 1996,
+    "tagline": "In every life there comes a time when that thing you dream becomes that thing you do"
+  },
+  {
+    "_id": 87,
+    "title": "The Replacements",
+    "released": 2000,
+    "tagline": "Pain heals, Chicks dig scars... Glory lasts forever"
+  },
+  {
+    "_id": 92,
+    "title": "RescueDawn",
+    "released": 2006,
+    "tagline": "Based on the extraordinary true story of one man's fight for freedom"
+  },
+  {
+    "_id": 95,
+    "title": "The Birdcage",
+    "released": 1996,
+    "tagline": "Come as you are"
+  },
+  {
+    "_id": 97,
+    "title": "Unforgiven",
+    "released": 1992,
+    "tagline": "It's a hell of a thing, killing a man"
+  },
+  {
+    "_id": 100,
+    "title": "Johnny Mnemonic",
+    "released": 1995,
+    "tagline": "The hottest data on earth. In the coolest head in town"
+  },
+  {
+    "_id": 105,
+    "title": "Cloud Atlas",
+    "released": 2012,
+    "tagline": "Everything is connected"
+  },
+  {
+    "_id": 111,
+    "title": "The Da Vinci Code",
+    "released": 2006,
+    "tagline": "Break The Codes"
+  },
+  {
+    "_id": 116,
+    "title": "V for Vendetta",
+    "released": 2006,
+    "tagline": "Freedom! Forever!"
+  },
+  {
+    "_id": 121,
+    "title": "Speed Racer",
+    "released": 2008,
+    "tagline": "Speed has no limits"
+  },
+  {
+    "_id": 128,
+    "title": "Ninja Assassin",
+    "released": 2009,
+    "tagline": "Prepare to enter a secret world of assassins"
+  },
+  {
+    "_id": 130,
+    "title": "The Green Mile",
+    "released": 1999,
+    "tagline": "Walk a mile you'll never forget."
+  },
+  {
+    "_id": 137,
+    "title": "Frost/Nixon",
+    "released": 2008,
+    "tagline": "400 million people were waiting for the truth."
+  },
+  {
+    "_id": 141,
+    "title": "Hoffa",
+    "released": 1992,
+    "tagline": "He didn't want law. He wanted justice."
+  },
+  {
+    "_id": 144,
+    "title": "Apollo 13",
+    "released": 1995,
+    "tagline": "Houston, we have a problem."
+  },
+  {
+    "_id": 147,
+    "title": "Twister",
+    "released": 1996,
+    "tagline": "Don't Breathe. Don't Look Back."
+  },
+  {
+    "_id": 150,
+    "title": "Cast Away",
+    "released": 2000,
+    "tagline": "At the edge of the world, his journey begins."
+  },
+  {
+    "_id": 152,
+    "title": "One Flew Over the Cuckoo's Nest",
+    "released": 1975,
+    "tagline": "If he's crazy, what does that make you?"
+  },
+  {
+    "_id": 154,
+    "title": "Something's Gotta Give",
+    "released": 2003,
+    "tagline": null
+  },
+  {
+    "_id": 157,
+    "title": "Bicentennial Man",
+    "released": 1999,
+    "tagline": "One robot's 200 year journey to become an ordinary man."
+  },
+  {
+    "_id": 159,
+    "title": "Charlie Wilson's War",
+    "released": 2007,
+    "tagline": "A stiff drink. A little mascara. A lot of nerve. Who said they couldn't bring down the Soviet empire."
+  },
+  {
+    "_id": 161,
+    "title": "The Polar Express",
+    "released": 2004,
+    "tagline": "This Holiday Season... Believe"
+  },
+  {
+    "_id": 162,
+    "title": "A League of Their Own",
+    "released": 1992,
+    "tagline": "Once in a lifetime you get a chance to do something different."
+  }
+]

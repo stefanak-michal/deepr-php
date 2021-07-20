@@ -1,0 +1,11 @@
+{
+  "movies": {
+    "getByTitle=>movie": {
+      "()": [
+        "The Matrix"
+      ],
+      "title": true,
+      "released": true
+    }
+  }
+}
