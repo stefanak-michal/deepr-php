@@ -8,6 +8,11 @@ PHP API library following Deepr specification.
 
 Check [wiki](https://github.com/stefanak-michal/deepr-php/wiki) for more informations about how to use this library. Check [Deepr](https://github.com/deeprjs/deepr) specification to learn how to make requests.
 
+## Requirements
+
+- PHP >= 7.1
+- json (https://www.php.net/manual/en/book.json.php)
+
 ## Installation
 
 ### Composer
