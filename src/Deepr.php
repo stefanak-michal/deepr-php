@@ -1,9 +1,37 @@
 <?php
 
-class Deepr
+namespace Deepr;
+
+use Deepr\components\{
+    IComponent,
+    Collection,
+    ILoadable,
+    Value
+};
+use \Exception;
+
+/**
+ * Class Deepr
+ *
+ * @package Deepr
+ * @author Michal Stefanak
+ * @link https://github.com/stefanak-michal/deepr-php
+ * @link https://refactoring.guru/design-patterns/composite
+ */
+final class Deepr
 {
+    /**
+     * Enable to see query traversal
+     * @var bool
+     */
     public static $debug = false;
 
+    /**
+     * Apply query on specific Collection instance
+     * @param Collection $root
+     * @param array $query
+     * @throws Exception
+     */
     public function invokeQuery(Collection $root, array $query)
     {
         foreach ($query as $key => $value) {
@@ -42,6 +70,12 @@ class Deepr
         }
     }
 
+    /**
+     * @param IComponent $root
+     * @param string $action
+     * @param array $values
+     * @throws Exception
+     */
     private function recursion(IComponent $root, string $action, array $values)
     {
         foreach ($values as $k => $v) {
@@ -52,7 +86,7 @@ class Deepr
             } elseif ($k === '[]' && !empty($action)) {
                 if (self::$debug)
                     var_dump($action . ' []');
-                if (!($root instanceof Loadable))
+                if (!($root instanceof ILoadable))
                     throw new Exception('You are trying access collection on not loadable object');
 
                 $offset = 0;
@@ -103,8 +137,7 @@ class Deepr
                     if (self::$debug)
                         var_dump($action . ' array return');
                     $this->recursion($root, $action, $v);
-                }
-                elseif ($this->isNest($k)) {
+                } elseif ($this->isNest($k)) {
                     if (self::$debug)
                         var_dump($action . ' array nest');
                     $clone = clone $root;
@@ -123,6 +156,11 @@ class Deepr
         }
     }
 
+    /**
+     * Is "=>target", "source=>target" or "key"
+     * @param string $key
+     * @return bool
+     */
     private function isNest(string $key): bool
     {
         if (strpos($key, '=>') !== false) {
@@ -132,6 +170,11 @@ class Deepr
         return true;
     }
 
+    /**
+     * Is "source=>"
+     * @param string $key
+     * @return bool
+     */
     private function isUnnest(string $key): bool
     {
         if (strpos($key, '=>') !== false) {
@@ -141,6 +184,12 @@ class Deepr
         return false;
     }
 
+    /**
+     * Get final key
+     * @param string $key
+     * @param bool $alias If you want the source key set this to false, otherwise will return target key
+     * @return string
+     */
     private function getKey(string $key, bool $alias = true): string
     {
         if (strpos($key, '=>') === false)
@@ -150,83 +199,4 @@ class Deepr
         return $alias ? ($a ?? $k) : $k;
     }
 
-    private function getAlias(string $key): ?string
-    {
-        if (strpos($key, '=>') === false)
-            return null;
-
-        return explode('=>', $key, 2)[1] ?? null;
-    }
-}
-
-/*
- * @link https://refactoring.guru/design-patterns/composite
- */
-
-interface IComponent
-{
-    public function execute();
-}
-
-class Collection implements IComponent
-{
-    private $children = [];
-
-    public function add(IComponent $c, string $name = '')
-    {
-        if (!empty($name))
-            $this->children[$name] = $c;
-        else
-            $this->children[] = $c;
-    }
-
-    public function remove(IComponent $c)
-    {
-        $key = array_search($c, $this->children);
-        if ($key !== false)
-            unset($this->children[$key]);
-    }
-
-    /**
-     * @return IComponent[]
-     */
-    public function getChildren(): array
-    {
-        return $this->children;
-    }
-
-    public function execute()
-    {
-        $output = [];
-
-        foreach ($this->getChildren() as $key => $child) {
-            $output = array_merge($output, [$key => $child->execute()]);
-        }
-
-        if (count($output) == 1 && is_int(key($output))) {
-            $output = reset($output);
-        }
-
-        return $output;
-    }
-}
-
-class Value implements IComponent
-{
-    private $value;
-
-    public function __construct($value)
-    {
-        $this->value = $value;
-    }
-
-    public function execute()
-    {
-        return $this->value;
-    }
-}
-
-interface Loadable
-{
-    public function load(): array;
 }

@@ -1,0 +1,43 @@
+{
+    "name": "stefanak-michal/deepr-php",
+    "description": "API library following Deepr specification",
+    "keywords": ["deepr", "php", "api", "rpc"],
+    "homepage": "https://github.com/stefanak-michal/deepr-php",
+    "type": "library",
+    "readme": "README.md",
+    "license": "MIT",
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=7.1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": ">=7.5.0"
+    },
+    "support": {
+        "issues": "https://github.com/stefanak-michal/deepr-php/issues",
+        "source": "https://github.com/stefanak-michal/deepr-php"
+    },
+    "funding": [
+        {
+            "type": "paypal",
+            "url": "https://www.paypal.me/MichalStefanak"
+        }
+    ],
+    "authors": [
+        {
+            "name": "Michal Stefanak",
+            "role": "Developer",
+            "homepage": "https://www.linkedin.com/in/michalstefanak/"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Deepr\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Deepr\\tests\\": "tests/"
+        }
+    }
+}

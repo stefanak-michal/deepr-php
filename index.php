@@ -14,7 +14,10 @@ if (file_exists('DB.php'))
 else
     trigger_error('Missing source DB class. You have to create own. Use DataMethods interface to implement all required methods.', E_USER_ERROR);
 
-require_once 'Deepr.php';
+require_once 'src' . DIRECTORY_SEPARATOR . 'autoload.php';
+
+use \Deepr\Deepr;
+use \Deepr\components\{IComponent, Collection, ILoadable};
 
 // Our data are only Movie and Person ..check classes below to see available properties
 
@@ -98,7 +101,7 @@ class Root extends Collection
  * Class Movies
  * Collection of movies
  */
-class Movies extends Collection implements Loadable
+class Movies extends Collection implements ILoadable
 {
     public $count;
 
