@@ -32,6 +32,7 @@ class Movies extends Collection implements ILoadable
      * @param int $offset
      * @param int|null $length
      * @return IComponent[]
+     * @see \Deepr\tests\classes\Movie
      */
     public function load(int $offset, ?int $length): array
     {
@@ -52,6 +53,7 @@ class Movies extends Collection implements ILoadable
      * {"movies":{"getByTitle":{"()":["The Matrix"]}}}
      * @param string $title
      * @return Collection
+     * @see \Deepr\tests\classes\Movie
      */
     public function getByTitle(string $title): Collection
     {

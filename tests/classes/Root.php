@@ -20,6 +20,7 @@ class Root extends Collection
      * {"movies": ...}
      * @internal It can be instance of class Movies directly
      * @var string|Collection
+     * @see \Deepr\tests\classes\Movies
      */
     public $movies = Movies::class;
 

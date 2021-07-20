@@ -34,6 +34,7 @@ class Movie extends Collection
      * RPC method to get actors of movie
      * {"movies":{"[]":[],"=>":{"getActors":{"()":[]}}}}
      * @return Collection
+     * @see \Deepr\tests\classes\Person
      */
     public function getActors(): Collection
     {
