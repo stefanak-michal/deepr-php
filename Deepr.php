@@ -2,6 +2,8 @@
 
 class Deepr
 {
+    public static $debug = false;
+
     public function invokeQuery(Collection $root, array $query)
     {
         foreach ($query as $key => $value) {
@@ -23,12 +25,14 @@ class Deepr
                 $collection = $root->{$key}(...$value['()']);
             }
 
-            if (isset($collection) && $collection instanceof Collection) {
+            if (isset($collection) && $collection instanceof IComponent) {
                 $this->recursion($collection, $key, $value);
 
                 if ($unnest) {
-                    foreach ($collection->getChildren() as $child)
-                        $root->add($child);
+                    if ($collection instanceof Collection) {
+                        foreach ($collection->getChildren() as $child)
+                            $root->add($child);
+                    }
                 } else {
                     $root->add($collection, $key);
                 }
@@ -38,12 +42,19 @@ class Deepr
         }
     }
 
-    private function recursion(Collection $root, string $action, array $values): void
+    private function recursion(IComponent $root, string $action, array $values)
     {
         foreach ($values as $k => $v) {
+            $key = $this->getKey($k, false);
+
             if (is_int($k)) {
                 $this->recursion($root, $action, $v);
-            } elseif ($k === '[]') {
+            } elseif ($k === '[]' && !empty($action)) {
+                if (self::$debug)
+                    var_dump($action . ' []');
+                if (!($root instanceof Loadable))
+                    throw new Exception('You are trying access collection on not loadable object');
+
                 $offset = 0;
                 $length = null;
                 if (is_int($v)) {
@@ -54,53 +65,59 @@ class Deepr
                     $length = $v[1] ?? null;
                 }
 
-                $root->load();
-                $children = $root->getChildren();
-                $root->clear();
-                foreach (array_slice($children, $offset, $length) as $row)
-                    $root->add($row);
+                $items = $root->load();
+                $tmpValues = $values;
+                unset($tmpValues['[]']);
+                foreach (array_slice($items, $offset, $length) as $item) {
+                    $this->recursion($item, $action, $tmpValues);
+                    $root->add($item);
+                }
+
+                return;
             } elseif ($k === '()') {
-                if (!method_exists($root, $action))
-                    throw new Exception('Missing method "' . $action . '" on "' . get_class($root) . '"');
+                continue;
+            } elseif (method_exists($root, $key) && is_array($v) && array_key_exists('()', $v)) {
+                if (self::$debug)
+                    var_dump($key . ' ()');
 
-                $data = $root->{$action}(...$v);
+                $data = $root->{$key}(...$v['()']);
+                if (!($data instanceof Collection))
+                    throw new Exception('Method response has to be Collection');
 
-                if ($data instanceof Collection) {
-                    foreach ($data->getChildren() as $child) {
-                        if ($child instanceof IComponent)
-                            $root->add($child);
-                    }
-                } elseif ($data instanceof IComponent) {
-                    $root->add($data);
+                $nest = $this->isNest($k);
+                foreach ($data->getChildren() as $child) {
+                    $this->recursion($child, $key, $v);
+                    if (!$nest)
+                        $root->add($child);
                 }
-            } elseif ($k === 'count' && $v === true) {
-                $root->requestColumn($k, $root->count());
+
+                if ($nest)
+                    $root->add($data, $this->getKey($k));
             } elseif ($v === true) {
-                $key = $this->getKey($k, false);
-                $unnest = $this->isUnnest($k);
-                $children = $root->getChildren();
-                if ($unnest)
-                    $root->clear();
-
-                foreach ($children as $child) {
-                    if ($child instanceof AComponent) {
-                        if (property_exists($child, $key)) {
-                            if ($unnest) {
-                                $root->add(new Value($child->$key));
-                            } else {
-                                $child->requestColumn($key, $this->getAlias($k));
-                            }
-                        }
-                    }
-                }
+                if (self::$debug)
+                    var_dump($action . ' ' . $k . ' true');
+                if (property_exists($root, $key))
+                    $root->add(new Value($root->$key), $this->getKey($k));
             } elseif (is_array($v)) {
-                if ($this->isNest($k)) {
-                    $cls = get_class($root);
-                    $clone = new $cls();
-                    $this->recursion($clone, $this->getKey($k, false), $v);
+                if ($k === '=>') {
+                    if (self::$debug)
+                        var_dump($action . ' array return');
+                    $this->recursion($root, $action, $v);
+                }
+                elseif ($this->isNest($k)) {
+                    if (self::$debug)
+                        var_dump($action . ' array nest');
+                    $clone = clone $root;
+                    $this->recursion($clone, $action, $v);
                     $root->add($clone, $this->getKey($k));
                 } elseif ($this->isUnnest($k)) {
+                    if (self::$debug)
+                        var_dump($action . ' array unnest');
                     $this->recursion($root, $this->getKey($k, false), $v);
+                } else {
+                    if (self::$debug)
+                        var_dump($action . ' array iterate');
+                    $this->recursion($root, $k, $v);
                 }
             }
         }
@@ -108,12 +125,20 @@ class Deepr
 
     private function isNest(string $key): bool
     {
-        return strpos($key, '=>') !== false && !$this->isUnnest($key);
+        if (strpos($key, '=>') !== false) {
+            list($a, $b) = explode('=>', $key, 2);
+            return !empty($b);
+        }
+        return true;
     }
 
     private function isUnnest(string $key): bool
     {
-        return substr($key, -2) == '=>';
+        if (strpos($key, '=>') !== false) {
+            list($a, $b) = explode('=>', $key, 2);
+            return !empty($a) && empty($b);
+        }
+        return false;
     }
 
     private function getKey(string $key, bool $alias = true): string
@@ -143,46 +168,8 @@ interface IComponent
     public function execute();
 }
 
-trait ComponentColumns
-{
-    private $columns = [];
-
-    public function requestColumn(string $column, $value = null)
-    {
-        if (is_null($value)) {
-            if (!in_array($column, $this->columns))
-                $this->columns[] = $column;
-        } else {
-            $this->columns[$column] = $value;
-        }
-    }
-
-    protected function getColumns(): array
-    {
-        return $this->columns;
-    }
-}
-
-abstract class AComponent implements IComponent
-{
-    use ComponentColumns;
-
-    public function execute(): array
-    {
-        $output = [];
-        foreach ($this->getColumns() as $a => $b) {
-            $column = is_int($a) ? $b : $a;
-            if (property_exists($this, $column))
-                $output[$b] = $this->$column;
-        }
-        return $output;
-    }
-}
-
 class Collection implements IComponent
 {
-    use ComponentColumns;
-
     private $children = [];
 
     public function add(IComponent $c, string $name = '')
@@ -200,11 +187,6 @@ class Collection implements IComponent
             unset($this->children[$key]);
     }
 
-    public function clear()
-    {
-        $this->children = [];
-    }
-
     /**
      * @return IComponent[]
      */
@@ -215,7 +197,7 @@ class Collection implements IComponent
 
     public function execute()
     {
-        $output = $this->getColumns();
+        $output = [];
 
         foreach ($this->getChildren() as $key => $child) {
             $output = array_merge($output, [$key => $child->execute()]);
@@ -226,16 +208,6 @@ class Collection implements IComponent
         }
 
         return $output;
-    }
-
-    public function count(): int
-    {
-        return count($this->children);
-    }
-
-    public function load()
-    {
-
     }
 }
 
@@ -252,4 +224,9 @@ class Value implements IComponent
     {
         return $this->value;
     }
+}
+
+interface Loadable
+{
+    public function load(): array;
 }

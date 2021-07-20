@@ -6,6 +6,7 @@ interface DataMethods
     public static function getMovies(): array;
     public static function getMovieByTitle(string $title): array;
     public static function getMoviesByReleased(int $year): array;
+    public static function getMovieActors(int $idMovie): array;
 }
 
 if (file_exists('DB.php'))
@@ -18,25 +19,56 @@ require_once 'Deepr.php';
 // Our data are only Movie and Person ..check classes below to see available properties
 
 /**
+ * Helper function to add database info into object
+ * @param IComponent $object
+ * @param array $row
+ */
+function applyColumns(IComponent $object, array $row)
+{
+    foreach ($row as $column => $value) {
+        if (property_exists($object, $column))
+            $object->$column = $value;
+    }
+}
+
+/**
  * Class Movie
  */
-class Movie extends AComponent
+class Movie extends Collection
 {
     public $_id;
     public $title;
     public $released;
     public $tagline;
+
+    private $actors;
+
+    public function getActors()
+    {
+        if (is_null($this->actors)) {
+            $this->actors = new Collection();
+            foreach (DB::getMovieActors($this->_id) as $row) {
+                $person = new Person();
+                applyColumns($person, $row);
+                $this->actors->add($person);
+            }
+        }
+
+        return $this->actors;
+    }
+
 }
 
 /**
  * Class Person
  */
-class Person extends AComponent
+class Person extends Collection
 {
     public $_id;
     public $name;
     public $born;
 }
+
 
 /**
  * Class Root
@@ -54,71 +86,61 @@ class Root extends Collection
         //$this->movies = new Movies();
     }
 
+    public function load(): array
+    {
+        // TODO: Implement load() method.
+    }
+
+
 }
 
 /**
  * Class Movies
  * Collection of movies
  */
-class Movies extends Collection
+class Movies extends Collection implements Loadable
 {
+    public $count;
 
-    public function count(): int
+    public function __construct()
     {
-        return DB::getMoviesCount();
+        $this->count = DB::getMoviesCount();
     }
 
-    public function load()
+    public function load(): array
     {
+        $items = [];
         foreach (DB::getMovies() as $row) {
             $movie = new Movie();
-            foreach ($row as $column => $value) {
-                if (property_exists($movie, $column))
-                    $movie->$column = $value;
-            }
-            $this->add($movie);
+            applyColumns($movie, $row);
+            $items[] = $movie;
         }
+        return $items;
     }
 
-    public function getByTitle(string $title): ?Movie
+    public function getByTitle(string $title): Collection
     {
-        if (parent::count()) {
-            foreach ($this->getChildren() as $child) {
-                if ($child instanceof Movie && $child->title == $title)
-                    return $child;
-            }
-        }
+        $collection = new self();
 
         $movie = new Movie();
         $row = DB::getMovieByTitle($title);
-        foreach ($row as $column => $value) {
-            if (property_exists($movie, $column))
-                $movie->$column = $value;
-        }
-        return $movie;
+        applyColumns($movie, $row);
+        $collection->add($movie);
+
+        return $collection;
     }
 
     public function getByReleased(int $year): Collection
     {
-        $movies = new Movies();
-        if (parent::count()) {
-            foreach ($this->getChildren() as $child) {
-                if ($child instanceof Movie && $child->released == $year)
-                    $movies->add($child);
-            }
+        $collection = new self();
 
-        } else {
-            foreach (DB::getMoviesByReleased($year) as $row) {
-                $movie = new Movie();
-                foreach ($row as $column => $value) {
-                    if (property_exists($movie, $column))
-                        $movie->$column = $value;
-                }
-                $movies->add($movie);
-            }
+        foreach (DB::getMoviesByReleased($year) as $row) {
+            $movie = new Movie();
+            applyColumns($movie, $row);
+            $collection->add($movie);
         }
 
-        return $movies;
+        return $collection;
     }
 }
 
@@ -131,11 +153,44 @@ $json = [
     '{"movies": {"count": true}}',
     '{"movies": {"[]": [0, 2],"title": true, "released": true}}',
     '{"movies": {"[]": [35],"title": true}}',
-    '{"movies": {"[]": 20,"title=>": true}}',
+    '{
+  "movies": {
+    "[]": 20,
+    "=>": {
+      "title": true
+
+    }
+  }
+}',
+    '{
+  "movies": {
+    "[]": 20,
+    "=>": {
+      "title": true,
+      "getActors": {
+        "()": [],
+        "name": true
+      }
+    }
+  }
+}',
+    '{
+  "movies": {
+    "[]": 20,
+    "=>": {
+      "title": true,
+      "getActors=>actors": {
+        "()": [],
+        "name": true
+      }
+    }
+  }
+}',
+
     '{"movies": {"[]": 20,"title=>Title": true}}',
-    '{"movies": {"count": true,"=>items": {"[]": [5, 5],"title": true}}}',
-    '{"movies": {"count": true,"items=>": {"[]": [5, 5],"title": true}}}',
-    '{"movies": {"count": true,"=>items": {"[]": [5, 5],"title=>": true}}}',
+    '{"movies": {"=>items": {"[]": [5, 5],"title": true}}}',
+    '{"movies": {"items=>": {"[]": [5, 5],"title": true}}}',
+    '{"movies": {"=>items": {"[]": [5, 5],"title=>": true}}}',
     '{"movies": {"=>": {"[]": [5, 2],"title": true}}}',
     '{"movies": {"getByTitle=>": {"()":["The Matrix"], "title": true, "released": true}}}',
     '{"movies": {"getByTitle=>movie": {"()":["The Matrix"], "title": true, "released": true}}}',
@@ -156,14 +211,10 @@ $json = [
     }
   ]
 }',
-//    '{"movies": {"[]": [0,5], "title": true}, "persons": {"[]": [0,5], "name": true}}',
-//    '{"movies":{"filter=>":{"()":[{"released":1996}],"sort=>":{"()":[{"by":"title"}],"skip=>":{"()":[1],"limit=>":{"()":[10],"=>":{"[]":[],"title":true,"released":true}}}}}}}',
-//    '{"movies":[{"getByTitle=>":{"()":["Top Gun"],"title":true}},{"getByTitle=>":{"()":["The Matrix"],"title":true}}]}',
-//    '{"getMovies=>actionMovies":{"()":[],"=>":{"[]":[],"title":true}}}',
-//    '{"movies": {"[]": [], "title": true, "getActors=>actors": { "()": [], "name": true } }}'
 ];
 
 $deepr = new Deepr();
+$deepr::$debug = true;
 foreach ($json as $j) {
     echo '###############';
     echo '<pre>' . $j . '</pre>' . PHP_EOL;
