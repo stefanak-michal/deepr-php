@@ -11,7 +11,6 @@ Check [wiki](https://github.com/stefanak-michal/deepr-php/wiki) for more informa
 ## Requirements
 
 - PHP >= 7.1
-- json (https://www.php.net/manual/en/book.json.php)
 
 ## Installation
 
