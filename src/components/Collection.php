@@ -20,7 +20,7 @@ class Collection implements IComponent
      * @param IComponent $component
      * @param string $name [Optional] To store under specific key in collection
      */
-    public function add(IComponent $component, string $name = '')
+    final public function add(IComponent $component, string $name = '')
     {
         if (!empty($name))
             $this->children[$name] = $component;
@@ -32,7 +32,7 @@ class Collection implements IComponent
      * Get list of children
      * @return IComponent[]
      */
-    public function getChildren(): array
+    final public function getChildren(): array
     {
         return $this->children;
     }
@@ -40,15 +40,15 @@ class Collection implements IComponent
     /**
      * @inheritDoc
      */
-    public function execute()
+    final public function execute(array $options = [])
     {
         $output = [];
 
         foreach ($this->getChildren() as $key => $child) {
-            $output = array_merge($output, [$key => $child->execute()]);
+            $output = array_merge($output, [$key => $child->execute($options)]);
         }
 
-        if (count($output) == 1 && is_int(key($output))) {
+        if ($options[\Deepr\Deepr::OPTION_UNNEST_ONE_CHILD] && count($output) == 1 && is_int(key($output))) {
             $output = reset($output);
         }
 

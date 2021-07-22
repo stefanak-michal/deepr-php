@@ -20,6 +20,8 @@ use \Exception;
  */
 final class Deepr
 {
+    const OPTION_UNNEST_ONE_CHILD = 1;
+
     /**
      * Enable to see query traversal
      * @var bool
@@ -27,13 +29,31 @@ final class Deepr
     public static $debug = false;
 
     /**
+     * Default options
+     * @var array
+     */
+    private static $defaultOptions = [
+        self::OPTION_UNNEST_ONE_CHILD => true
+    ];
+
+    /**
+     * Current options
+     * @var array
+     */
+    private $options;
+
+    /**
      * Apply query on specific Collection instance
      * @param Collection $root
      * @param array $query
+     * @param array $options
+     * @return array
      * @throws Exception
      */
-    public function invokeQuery(Collection $root, array $query)
+    public function invokeQuery(Collection $root, array $query, array $options = []): array
     {
+        $this->options = array_replace(self::$defaultOptions, array_intersect_key($options, self::$defaultOptions));
+
         foreach ($query as $key => $value) {
             if ($key === '||')
                 throw new Exception('Parallel processing not implemented');
@@ -68,6 +88,8 @@ final class Deepr
                 throw new Exception('Requested value "' . $key . '" is not valid property or method call');
             }
         }
+
+        return $root->execute($this->options);
     }
 
     /**
@@ -99,7 +121,7 @@ final class Deepr
 
                     $tmpValues = $values;
                     unset($tmpValues['[]']);
-                    foreach ($root->load($offset, $length) as $item) {
+                    foreach ($root->load($offset, $length)->getChildren() as $item) {
                         $this->recursion($item, $action, $tmpValues);
                         $root->add($item);
                     }

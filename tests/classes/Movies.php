@@ -31,19 +31,19 @@ class Movies extends Collection implements ILoadable
      * {"movies": {"[]": []}}
      * @param int $offset
      * @param int|null $length
-     * @return IComponent[]
+     * @return Collection
      * @see \Deepr\tests\classes\Movie
      */
-    public function load(int $offset, ?int $length): array
+    public function load(int $offset, ?int $length): Collection
     {
-        $items = [];
+        $items = new Collection();
         foreach (array_slice(Database::getMovies(), $offset, $length) as $row) {
             $movie = new Movie();
             $movie->_id = $row['_id'];
             $movie->title = $row['title'];
             $movie->released = $row['released'];
             $movie->tagline = $row['tagline'];
-            $items[] = $movie;
+            $items->add($movie);
         }
         return $items;
     }

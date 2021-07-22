@@ -12,7 +12,8 @@ interface IComponent
 {
     /**
      * Execute logic on component
+     * @param array $options
      * @return mixed
      */
-    public function execute();
+    public function execute(array $options = []);
 }

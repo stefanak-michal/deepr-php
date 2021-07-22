@@ -10,5 +10,11 @@ namespace Deepr\components;
  */
 interface ILoadable
 {
-    public function load(int $offset, ?int $length): array;
+    /**
+     * Get collection on "[]" call
+     * @param int $offset
+     * @param int|null $length
+     * @return Collection
+     */
+    public function load(int $offset, ?int $length): Collection;
 }

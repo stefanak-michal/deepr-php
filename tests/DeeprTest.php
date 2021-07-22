@@ -37,35 +37,12 @@ class DeeprTest extends TestCase
     {
         try {
             $root = new Root();
-            $deepr->invokeQuery($root, json_decode($input, true));
-            $result = $root->execute();
+            $result = $deepr->invokeQuery($root, json_decode($input, true));
             $result = json_encode($result);
             $this->assertJsonStringEqualsJsonString($output, $result);
         } catch (Exception $e) {
             $this->markTestIncomplete($e->getMessage());
         }
-    }
-
-    /**
-     * @depends testDeepr
-     * @param Deepr $deepr
-     */
-    public function testParallel(Deepr $deepr)
-    {
-        $root = new Root();
-        $this->expectException(Exception::class);
-        $deepr->invokeQuery($root, json_decode('{"||":[]}', true));
-    }
-
-    /**
-     * @depends testDeepr
-     * @param Deepr $deepr
-     */
-    public function testMissingException(Deepr $deepr)
-    {
-        $root = new Root();
-        $this->expectException(Exception::class);
-        $deepr->invokeQuery($root, json_decode('{ "missingFunction": { "()": [] } }', true));
     }
 
     /**
@@ -93,5 +70,47 @@ class DeeprTest extends TestCase
         }
 
         return $data;
+    }
+
+    /**
+     * @depends testDeepr
+     * @param Deepr $deepr
+     */
+    public function testParallel(Deepr $deepr)
+    {
+        $root = new Root();
+        $this->expectException(Exception::class);
+        $deepr->invokeQuery($root, json_decode('{"||":[]}', true));
+    }
+
+    /**
+     * @depends testDeepr
+     * @param Deepr $deepr
+     */
+    public function testMissingException(Deepr $deepr)
+    {
+        $root = new Root();
+        $this->expectException(Exception::class);
+        $deepr->invokeQuery($root, json_decode('{ "missingFunction": { "()": [] } }', true));
+    }
+
+    /**
+     * @depends testDeepr
+     * @param Deepr $deepr
+     */
+    public function testOptions(Deepr $deepr)
+    {
+        $input = json_decode('{"movies":{"[]":5,"=>":{"title": true}}}', true);
+        $output = '{"movies":[{"title":"Top Gun"}]}';
+        $options = [$deepr::OPTION_UNNEST_ONE_CHILD => false];
+
+        try {
+            $root = new Root();
+            $result = $deepr->invokeQuery($root, $input, $options);
+            $result = json_encode($result);
+            $this->assertJsonStringEqualsJsonString($output, $result);
+        } catch (Exception $e) {
+            $this->markTestIncomplete($e->getMessage());
+        }
     }
 }
