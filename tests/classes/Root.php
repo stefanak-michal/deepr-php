@@ -2,8 +2,7 @@
 
 namespace Deepr\tests\classes;
 
-use Deepr\components\Collection;
-use Deepr\components\Value;
+use Deepr\components\{Collection, Value, IComponent};
 
 /**
  * Class Root
@@ -26,14 +25,12 @@ class Root extends Collection
 
     /**
      * Sample method
-     * RPC methods has to be public and returns Collection
+     * RPC methods has to be public and returns IComponent
      * {"date": {"()": []}}
-     * @return Collection
+     * @return IComponent
      */
-    public function date(): Collection
+    public function date(): IComponent
     {
-        $collection = new Collection();
-        $collection->add(new Value('2021-07-20'));
-        return $collection;
+        return new Value('2021-07-20');
     }
 }

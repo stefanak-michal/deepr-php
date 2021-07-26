@@ -52,21 +52,17 @@ class Movies extends Collection implements ILoadable
      * RPC method to get movie by title
      * {"movies":{"getByTitle":{"()":["The Matrix"]}}}
      * @param string $title
-     * @return Collection
+     * @return IComponent
      * @see \Deepr\tests\classes\Movie
      */
-    public function getByTitle(string $title): Collection
+    public function getByTitle(string $title): IComponent
     {
-        $collection = new self();
-
         $movie = new Movie();
         $row = Database::getMovieByTitle($title);
         $movie->_id = $row['_id'];
         $movie->title = $row['title'];
         $movie->released = $row['released'];
         $movie->tagline = $row['tagline'];
-        $collection->add($movie);
-
-        return $collection;
+        return $movie;
     }
 }

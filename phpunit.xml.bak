@@ -1,0 +1,13 @@
+<phpunit bootstrap="src/autoload.php">
+    <testsuites>
+        <testsuite name="Deepr">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">/src/components</directory>
+            <file>/src/Deepr.php</file>
+        </whitelist>
+    </filter>
+</phpunit>

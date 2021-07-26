@@ -38,6 +38,14 @@ class Collection implements IComponent
     }
 
     /**
+     * Clear children collection
+     */
+    final public function clear()
+    {
+        $this->children = [];
+    }
+
+    /**
      * @inheritDoc
      */
     final public function execute(array $options = [])
@@ -45,11 +53,24 @@ class Collection implements IComponent
         $output = [];
 
         foreach ($this->getChildren() as $key => $child) {
-            $output = array_merge($output, [$key => $child->execute($options)]);
-        }
+            $result = $child->execute($options);
 
-        if ($options[\Deepr\Deepr::OPTION_UNNEST_ONE_CHILD] && count($output) == 1 && is_int(key($output))) {
-            $output = reset($output);
+            if ($key !== '=>' && substr($key, -2) === '=>') { //unnest
+                $output = $result;
+            } elseif (is_array($result)) {
+                if (strpos($key, '=>') === false) { //just a key
+                    $output[$key] = $result;
+                } else {
+                    list ($k, $a) = explode('=>', $key);
+                    if (empty($k) && empty($a)) { //to return
+                        $output = array_merge($output, $result);
+                    } elseif (!empty($a)) { //nest
+                        $output = array_merge($output, [$a => $result]);
+                    }
+                }
+            } else { //value
+                $output[$key] = $result;
+            }
         }
 
         return $output;

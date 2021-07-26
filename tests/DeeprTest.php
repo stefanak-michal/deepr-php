@@ -12,6 +12,10 @@ use Exception;
  * @package Deepr\tests
  * @author Michal Stefanak
  * @link https://github.com/stefanak-michal/deepr-php
+ *
+ * @covers \Deepr\Deepr
+ * @covers \Deepr\components\Collection
+ * @covers \Deepr\components\Value
  */
 class DeeprTest extends TestCase
 {
@@ -35,9 +39,13 @@ class DeeprTest extends TestCase
      */
     public function testInvokeQueries(string $input, string $output, Deepr $deepr)
     {
+        var_dump($input, $output);
         try {
             $root = new Root();
-            $result = $deepr->invokeQuery($root, json_decode($input, true));
+            $input = json_decode($input, true);
+            if (json_last_error() != JSON_ERROR_NONE)
+                throw new Exception(json_last_error_msg());
+            $result = $deepr->invokeQuery($root, $input);
             $result = json_encode($result);
             $this->assertJsonStringEqualsJsonString($output, $result);
         } catch (Exception $e) {
@@ -49,14 +57,13 @@ class DeeprTest extends TestCase
      * Use json files in jsons directory as sample data for requests
      * @return array
      */
-    public function jsonProvider()
+    public function jsonProvider(): array
     {
         $data = [];
         $dir = __DIR__ . DIRECTORY_SEPARATOR . 'jsons' . DIRECTORY_SEPARATOR;
         if (file_exists($dir)) {
             foreach (glob($dir . '*.json') as $file) {
                 list($i, $type) = explode('-', pathinfo($file, PATHINFO_FILENAME), 2);
-                $i = intval($i);
                 $type = $type == 'input' ? 0 : 1;
 
                 $json = file_get_contents($file);
@@ -65,7 +72,7 @@ class DeeprTest extends TestCase
                 $json = json_decode($json, true);
                 if (json_last_error() != JSON_ERROR_NONE)
                     continue;
-                $data[$i][$type] = json_encode($json);
+                $data['json ' . $i][$type] = json_encode($json);
             }
         }
 
@@ -100,17 +107,6 @@ class DeeprTest extends TestCase
      */
     public function testOptions(Deepr $deepr)
     {
-        $input = json_decode('{"movies":{"[]":5,"=>":{"title": true}}}', true);
-        $output = '{"movies":[{"title":"Top Gun"}]}';
-        $options = [$deepr::OPTION_UNNEST_ONE_CHILD => false];
-
-        try {
-            $root = new Root();
-            $result = $deepr->invokeQuery($root, $input, $options);
-            $result = json_encode($result);
-            $this->assertJsonStringEqualsJsonString($output, $result);
-        } catch (Exception $e) {
-            $this->markTestIncomplete($e->getMessage());
-        }
+        $this->markTestSkipped('No options available');
     }
 }
