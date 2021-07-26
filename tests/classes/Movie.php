@@ -3,6 +3,7 @@
 namespace Deepr\tests\classes;
 
 use Deepr\components\Collection;
+use Deepr\components\IComponent;
 
 /**
  * Class Movie
@@ -33,10 +34,10 @@ class Movie extends Collection
     /**
      * RPC method to get actors of movie
      * {"movies":{"[]":[],"=>":{"getActors":{"()":[]}}}}
-     * @return Collection
+     * @return IComponent
      * @see \Deepr\tests\classes\Person
      */
-    public function getActors(): Collection
+    public function getActors(): IComponent
     {
         if (is_null($this->actors)) {
             $this->actors = new Collection();

@@ -1,0 +1,16 @@
+[
+  {
+    "movies=>": {
+      "[]": 1,
+      "title": true,
+      "released": true
+    }
+  },
+  {
+    "movies=>": {
+      "[]": 5,
+      "title": true,
+      "released": true
+    }
+  }
+]
