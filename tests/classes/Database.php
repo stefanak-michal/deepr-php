@@ -64,7 +64,6 @@ class Database
         $output = [];
         foreach (self::$actors as $actor) {
             if (in_array($idMovie, $actor['_movies'])) {
-                unset($actor['_movies']);
                 $output[] = $actor;
             }
         }

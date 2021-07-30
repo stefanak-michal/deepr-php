@@ -50,7 +50,7 @@ final class Deepr
     {
         $this->options = array_replace(self::$defaultOptions, array_intersect_key($options, self::$defaultOptions));
 
-        if (reset($query) === '||')
+        if (key($query) === '||')
             throw new Exception('Parallel processing not implemented');
 
         if (array_filter(array_keys($query), 'is_int') == array_keys($query)) {
@@ -117,9 +117,9 @@ final class Deepr
                                 }
                         }
                     } elseif (is_array($v)) {
-                        foreach ($root->load($v[0] ?? 0, $v[1] ?? null)->getChildren() as $child) {
+                        foreach ($root->load($v[0] ?? 0, $v[1] ?? null)->getChildren() as $name => $child) {
                             $this->recursion($child, $action, $tmpValues);
-                            $root->add($child);
+                            $root->add($child, $name);
                         }
                     }
 
@@ -129,20 +129,36 @@ final class Deepr
                 return;
             } elseif ($k === '()') {
                 continue;
-            } elseif (method_exists($root, $key) && is_array($v) && array_key_exists('()', $v)) {
+            } elseif (is_array($v) && array_key_exists('()', $v)) {
                 if (self::$debug)
                     var_dump($key . ' ()');
 
-                $data = $root->{$key}(...$v['()']);
-                if ($data instanceof Collection) {
-                    $this->recursion($data, $key, $v);
-                    foreach ($data->getChildren() as $child) {
-                        $this->recursion($child, $key, $v);
+                $fnc = function ($data, Collection $parent) use ($key, $k, $v) {
+                    if ($data instanceof Collection) {
+                        foreach ($data->getChildren() as $child) {
+                            $this->recursion($child, $key, $v);
+                        }
+                        $parent->add($data, $k);
+                    } else {
+                        throw new Exception('Method response has to be Collection');
                     }
+                };
 
-                    $root->add($data, $k);
+                //call method on each child from collection
+                if (get_class($root) == Collection::class) {
+                    foreach ($root->getChildren() as $child) {
+                        if ($child instanceof Collection && method_exists($child, $key)) {
+                            $data = $child->{$key}(...$v['()']);
+                            $fnc($data, $child);
+                        }
+                    }
+                } //call method on structure class itself
+                elseif (is_subclass_of($root, Collection::class) && method_exists($root, $key)) {
+                    $data = $root->{$key}(...$v['()']);
+                    $fnc($data, $root);
+                    $this->recursion($data, $key, $v);
                 } else {
-                    throw new Exception('Method response has to be Collection');
+                    throw new Exception('Not existing method call ' . $key);
                 }
             } elseif ($v === true) {
                 if (self::$debug)

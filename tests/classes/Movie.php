@@ -46,6 +46,7 @@ class Movie extends Collection
                 $person->_id = $row['_id'];
                 $person->name = $row['name'];
                 $person->born = $row['born'];
+                $person->_movies = $row['_movies'];
                 $this->actors->add($person);
             }
         }

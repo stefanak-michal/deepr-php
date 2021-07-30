@@ -19,4 +19,24 @@ class Person extends Collection
      */
     public $name;
     public $born;
+
+    public $_movies;
+
+    public function getMovies()
+    {
+        $items = new Collection();
+        if (empty($this->_movies))
+            return $items;
+        foreach (Database::getMovies() as $row) {
+            if (in_array($row['_id'], $this->_movies)) {
+                $movie = new Movie();
+                $movie->_id = $row['_id'];
+                $movie->title = $row['title'];
+                $movie->released = $row['released'];
+                $movie->tagline = $row['tagline'];
+                $items->add($movie);
+            }
+        }
+        return $items;
+    }
 }
