@@ -117,9 +117,9 @@ final class Deepr
                                 }
                         }
                     } elseif (is_array($v)) {
-                        foreach ($root->load($v[0] ?? 0, $v[1] ?? null)->getChildren() as $child) {
+                        foreach ($root->load($v[0] ?? 0, $v[1] ?? null)->getChildren() as $name => $child) {
                             $this->recursion($child, $action, $tmpValues);
-                            $root->add($child);
+                            $root->add($child, $name);
                         }
                     }
 
