@@ -40,5 +40,11 @@
         "psr-4": {
             "Deepr\\tests\\": "tests/"
         }
+    },
+    "scripts": {
+        "test": [
+            "Composer\\Config::disableProcessTimeout",
+            "phpunit"
+        ]
     }
 }
