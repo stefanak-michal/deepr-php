@@ -96,10 +96,10 @@ class DeeprTest extends TestCase
      * @depends testDeepr
      * @param Deepr $deepr
      */
-    public function testMissingException(Deepr $deepr)
+    public function testException(Deepr $deepr)
     {
         $root = new Root();
         $this->expectException(Exception::class);
-        $deepr->invokeQuery($root, json_decode('{ "missingFunction": { "()": [] } }', true));
+        $deepr->invokeQuery($root, json_decode('{ "[]": [] }', true));
     }
 }
