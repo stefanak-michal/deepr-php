@@ -54,4 +54,23 @@ class Movie extends Collection
         return $this->actors;
     }
 
+    /**
+     * RPC method to get movie by title. Use it with source values call.
+     * {"<=": {"_type": "Movie"}, "byTitle": {"()": ["The Matrix"]}}
+     * @param string $title
+     * @return Movie
+     * @see \Deepr\tests\classes\Movie
+     */
+    public function byTitle(string $title): Movie
+    {
+        $row = Database::getMovieByTitle($title);
+        if (!empty($row)) {
+            $this->_id = $row['_id'];
+            $this->title = $row['title'];
+            $this->released = $row['released'];
+            $this->tagline = $row['tagline'];
+        }
+        return $this;
+    }
+
 }

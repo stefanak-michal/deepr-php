@@ -22,7 +22,30 @@ class Person extends Collection
 
     public $_movies;
 
-    public function getMovies()
+    /**
+     * Person constructor. Use source values call to use it.
+     * {"<=": {"_type": "Person","id": 1}, ..}
+     * @param int $id
+     */
+    public function __construct(int $id = -1)
+    {
+        if ($id != -1) {
+            $row = Database::getActor($id);
+            if (!empty($row)) {
+                $this->_id = $row['_id'];
+                $this->name = $row['name'];
+                $this->born = $row['born'];
+                $this->_movies = $row['_movies'];
+            }
+        }
+    }
+
+    /**
+     * RPC method to get movies in which actor acted
+     * {..actor: {"getMovies":{"()": []}}
+     * @return Collection
+     */
+    public function getMovies(): Collection
     {
         $items = new Collection();
         if (empty($this->_movies))

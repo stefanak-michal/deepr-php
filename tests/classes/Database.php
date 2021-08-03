@@ -69,4 +69,14 @@ class Database
         }
         return $output;
     }
+
+    public static function getActor(int $idActor): array
+    {
+        self::load();
+        foreach (self::$actors as $actor) {
+            if ($actor['_id'] == $idActor)
+                return $actor;
+        }
+        return [];
+    }
 }

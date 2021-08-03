@@ -1,20 +1,16 @@
-{
-  "movies": [
-    {
-      "getByTitle=>": {
-        "()": [
-          "Top Gun"
-        ],
-        "title": true
-      }
+[
+  {
+    "<=": {
+      "_type": "Person",
+      "id": 2
     },
-    {
-      "getByTitle=>": {
-        "()": [
-          "The Matrix"
-        ],
-        "title": true
-      }
-    }
-  ]
-}
+    "name": true
+  },
+  {
+    "<=": {
+      "_type": "Person",
+      "id": 5
+    },
+    "name": true
+  }
+]

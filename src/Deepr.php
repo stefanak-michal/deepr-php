@@ -21,6 +21,15 @@ use \Exception;
 final class Deepr
 {
     /**
+     * Source Values argument key
+     */
+    const OPTION_SV_KEY = 1;
+    /**
+     * Source values class names namespace prefix
+     */
+    const OPTION_SV_NS = 2;
+
+    /**
      * Enable to see query traversal
      * @var bool
      */
@@ -30,7 +39,10 @@ final class Deepr
      * Default options
      * @var array
      */
-    private static $defaultOptions = [];
+    private static $defaultOptions = [
+        self::OPTION_SV_KEY => '_type',
+        self::OPTION_SV_NS => ''
+    ];
 
     /**
      * Current options
@@ -53,37 +65,40 @@ final class Deepr
         if (key($query) === '||')
             throw new Exception('Parallel processing not implemented');
 
-        if (array_filter(array_keys($query), 'is_int') == array_keys($query)) {
-            $clone = clone $root;
-            foreach ($query as $key => $value) {
-                $clone->clear();
-                $this->invokeQuery($clone, $value, $options);
-                $root->add($clone);
-            }
-            return $root->execute($options);
-        }
-
-        foreach ($query as $key => $value) {
-            $action = $this->getKey($key, false);
-
-            if (property_exists($root, $action)) {
-                $collection = $root->$action;
-                if (is_string($collection) && class_exists($collection)) {
-                    $collection = new $collection();
-                }
-            } elseif (method_exists($root, $action) && array_key_exists('()', $value)) {
-                $collection = $root->{$action}(...$value['()']);
-            }
-
-            if (isset($collection) && $collection instanceof IComponent) {
-                $this->recursion($collection, $action, $value);
-                $root->add($collection, $key);
-            } else {
-                throw new Exception('Requested value "' . $key . '" is not valid property or method call');
-            }
-        }
-
+        $this->recursion($root, key($query), $query);
         return $root->execute($this->options);
+    }
+
+    /**
+     * Create instance of structure class by parameters
+     * @link https://github.com/deeprjs/deepr#source-values
+     * @param array $args
+     * @return IComponent
+     * @throws Exception
+     */
+    private function getInstance(array $args): IComponent
+    {
+        if (!array_key_exists($this->options[self::OPTION_SV_KEY], $args))
+            throw new Exception('Source values type key not found in arguments');
+
+        $cls = $this->options[self::OPTION_SV_NS] . $args[$this->options[self::OPTION_SV_KEY]];
+        if (!class_exists($cls))
+            throw new Exception('Requested class "' . $cls . '" does not exists');
+
+        $reflection = new \ReflectionClass($cls);
+        $invokeArgs = [];
+        if ($reflection->getConstructor()) {
+            foreach ($reflection->getConstructor()->getParameters() as $parameter) {
+                if (array_key_exists($parameter->getName(), $args))
+                    $invokeArgs[] = $args[$parameter->getName()];
+            }
+        }
+
+        $instance = new $cls(...$invokeArgs);
+        if (!($instance instanceof IComponent))
+            throw new Exception($cls . ' has to implement IComponent');
+
+        return $instance;
     }
 
     /**
@@ -92,73 +107,67 @@ final class Deepr
      * @param array $values
      * @throws Exception
      */
-    private function recursion(IComponent $root, string $action, array $values)
+    private function recursion(IComponent &$root, string $action, array $values)
     {
         foreach ($values as $k => $v) {
             $key = $this->getKey($k, false);
 
-            if (is_int($k)) {
+            if ($k === '<=') {
+                if (self::$debug)
+                    var_dump('<=');
+                $tmpValues = $values;
+                unset($tmpValues['<=']);
+                $instance = $this->getInstance($v);
+                $root = $instance;
+            } elseif (is_int($k)) {
+                if (self::$debug)
+                    var_dump('array');
                 $clone = clone $root;
+                $clone->clear();
                 $this->recursion($clone, $action, $v);
                 $root->add($clone);
             } elseif ($k === '[]' && !empty($action)) {
                 if (self::$debug)
                     var_dump($action . ' []');
-                if ($root instanceof ILoadable) {
-                    $tmpValues = $values;
-                    unset($tmpValues['[]']);
-
-                    if (is_int($v)) {
-                        foreach ($root->load($v, 1)->getChildren() as $child) {
-                            $this->recursion($child, $action, $tmpValues);
-                            if ($child instanceof Collection)
-                                foreach ($child->getChildren() as $name => $ch) {
-                                    $root->add($ch, $name);
-                                }
-                        }
-                    } elseif (is_array($v)) {
-                        foreach ($root->load($v[0] ?? 0, $v[1] ?? null)->getChildren() as $name => $child) {
-                            $this->recursion($child, $action, $tmpValues);
-                            $root->add($child, $name);
-                        }
-                    }
-
-                } else {
+                if (!($root instanceof ILoadable))
                     throw new Exception('To access collection of class it has to implement ILoadable interface');
+
+                $tmpValues = $values;
+                unset($tmpValues['[]']);
+
+                if (is_int($v)) {
+                    foreach ($root->load($v, 1)->getChildren() as $child) {
+                        $this->recursion($child, $action, $tmpValues);
+                        $root = $child;
+                    }
+                } elseif (is_array($v)) {
+                    foreach ($root->load($v[0] ?? 0, $v[1] ?? null)->getChildren() as $name => $child) {
+                        $this->recursion($child, $action, $tmpValues);
+                        $root->add($child, $name);
+                    }
                 }
-                return;
             } elseif ($k === '()') {
                 continue;
             } elseif (is_array($v) && array_key_exists('()', $v)) {
                 if (self::$debug)
                     var_dump($key . ' ()');
 
-                $fnc = function ($data, Collection $parent) use ($key, $k, $v) {
+                if (method_exists($root, $key)) {
+                    $data = $root->{$key}(...$v['()']);
+                    if ($root === $data) {
+                        $root = new Collection();
+                    }
+                    $this->recursion($data, $key, $v);
                     if ($data instanceof Collection) {
                         foreach ($data->getChildren() as $child) {
-                            $this->recursion($child, $key, $v);
+                            $this->recursion($child, '', $v);
                         }
-                        $parent->add($data, $k);
-                    } else {
-                        throw new Exception('Method response has to be Collection');
                     }
-                };
-
-                //call method on each child from collection
-                if (get_class($root) == Collection::class) {
+                    $root->add($data, $k);
+                } elseif ($root instanceof Collection) {
                     foreach ($root->getChildren() as $child) {
-                        if ($child instanceof Collection && method_exists($child, $key)) {
-                            $data = $child->{$key}(...$v['()']);
-                            $fnc($data, $child);
-                        }
+                        $this->recursion($child, $k, $v);
                     }
-                } //call method on structure class itself
-                elseif (is_subclass_of($root, Collection::class) && method_exists($root, $key)) {
-                    $data = $root->{$key}(...$v['()']);
-                    $fnc($data, $root);
-                    $this->recursion($data, $key, $v);
-                } else {
-                    throw new Exception('Not existing method call ' . $key);
                 }
             } elseif ($v === true) {
                 if (self::$debug)
@@ -166,6 +175,15 @@ final class Deepr
                 if (property_exists($root, $key)) {
                     $root->add(new Value($root->$key), $k);
                 }
+            } elseif (property_exists($root, $key)) {
+                if (self::$debug)
+                    var_dump('property ' . $key);
+                $collection = $root->$key;
+                if (is_string($collection) && class_exists($collection)) {
+                    $collection = new $collection();
+                }
+                $this->recursion($collection, $key, $v);
+                $root->add($collection, $k);
             } elseif (is_array($v)) {
                 if (self::$debug)
                     var_dump($action . ' array nest');

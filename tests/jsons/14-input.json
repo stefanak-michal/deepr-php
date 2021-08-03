@@ -1,0 +1,11 @@
+{
+  "<=": {
+    "_type": "Movie"
+  },
+  "byTitle=>movie": {
+    "()": [
+      "The Matrix"
+    ],
+    "title": true
+  }
+}

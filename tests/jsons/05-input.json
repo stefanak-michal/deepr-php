@@ -1,11 +1,26 @@
 {
-  "movies": {
-    "getByTitle=>movie": {
-      "()": [
-        "The Matrix"
-      ],
-      "title": true,
-      "released": true
+  "movies": [
+    {
+      "<=": {
+        "_type": "Movie"
+      },
+      "byTitle=>": {
+        "()": [
+          "The Matrix"
+        ],
+        "title": true
+      }
+    },
+    {
+      "<=": {
+        "_type": "Movie"
+      },
+      "byTitle=>": {
+        "()": [
+          "Top Gun"
+        ],
+        "title": true
+      }
     }
-  }
+  ]
 }
