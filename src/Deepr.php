@@ -21,6 +21,15 @@ use \Exception;
 final class Deepr
 {
     /**
+     * Source Values argument key
+     */
+    const OPTION_SV_KEY = 1;
+    /**
+     * Source values class names namespace prefix
+     */
+    const OPTION_SV_NS = 2;
+
+    /**
      * Enable to see query traversal
      * @var bool
      */
@@ -30,7 +39,10 @@ final class Deepr
      * Default options
      * @var array
      */
-    private static $defaultOptions = [];
+    private static $defaultOptions = [
+        self::OPTION_SV_KEY => '_type',
+        self::OPTION_SV_NS => ''
+    ];
 
     /**
      * Current options
@@ -54,13 +66,20 @@ final class Deepr
             throw new Exception('Parallel processing not implemented');
 
         if (array_filter(array_keys($query), 'is_int') == array_keys($query)) {
-            $clone = clone $root;
-            foreach ($query as $key => $value) {
-                $clone->clear();
-                $this->invokeQuery($clone, $value, $options);
-                $root->add($clone);
+            $result = [];
+            foreach ($query as $value) {
+                $root->clear();
+                $result[] = $this->invokeQuery($root, $value, $options);
             }
-            return $root->execute($options);
+            return $result;
+        }
+
+        //source values
+        if (key($query) == '<=') {
+            $instance = $this->getInstance($query['<=']);
+            unset($query['<=']);
+            $this->recursion($instance, '<=', $query);
+            return $instance->execute($this->options);
         }
 
         foreach ($query as $key => $value) {
@@ -87,18 +106,62 @@ final class Deepr
     }
 
     /**
+     * Create instance of structure class by parameters
+     * @link https://github.com/deeprjs/deepr#source-values
+     * @param array $args
+     * @return IComponent
+     * @throws Exception
+     */
+    private function getInstance(array $args): IComponent
+    {
+        if (!array_key_exists($this->options[self::OPTION_SV_KEY], $args))
+            throw new Exception('Source values type key not found in arguments');
+
+        $cls = $this->options[self::OPTION_SV_NS] . $args[$this->options[self::OPTION_SV_KEY]];
+        if (!class_exists($cls))
+            throw new Exception('Requested class "' . $cls . '" does not exists');
+
+        $reflection = new \ReflectionClass($cls);
+        $invokeArgs = [];
+        if ($reflection->getConstructor()) {
+            foreach ($reflection->getConstructor()->getParameters() as $parameter) {
+                if (array_key_exists($parameter->getName(), $args))
+                    $invokeArgs[] = $args[$parameter->getName()];
+            }
+        }
+
+        $instance = new $cls(...$invokeArgs);
+        if (!($instance instanceof IComponent))
+            throw new Exception($cls . ' has to implement IComponent');
+
+        return $instance;
+    }
+
+    /**
      * @param IComponent $root
      * @param string $action
      * @param array $values
      * @throws Exception
      */
-    private function recursion(IComponent $root, string $action, array $values)
+    private function recursion(IComponent &$root, string $action, array $values)
     {
         foreach ($values as $k => $v) {
             $key = $this->getKey($k, false);
 
-            if (is_int($k)) {
+            //source values
+            if ($k === '<=') {
+                if (self::$debug)
+                    var_dump('<=');
+                $tmpValues = $values;
+                unset($tmpValues['<=']);
+                $instance = $this->getInstance($v);
+                $this->recursion($instance, '<=', $tmpValues);
+                $root = $instance;
+            } elseif (is_int($k)) {
+                if (self::$debug)
+                    var_dump('array');
                 $clone = clone $root;
+                $clone->clear();
                 $this->recursion($clone, $action, $v);
                 $root->add($clone);
             } elseif ($k === '[]' && !empty($action)) {
@@ -155,8 +218,9 @@ final class Deepr
                 } //call method on structure class itself
                 elseif (is_subclass_of($root, Collection::class) && method_exists($root, $key)) {
                     $data = $root->{$key}(...$v['()']);
-                    $fnc($data, $root);
-                    $this->recursion($data, $key, $v);
+                    $clone = clone $data;
+                    $fnc($clone, $root);
+                    $this->recursion($clone, $key, $v);
                 } else {
                     throw new Exception('Not existing method call ' . $key);
                 }

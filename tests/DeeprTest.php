@@ -45,7 +45,9 @@ class DeeprTest extends TestCase
             $input = json_decode($input, true);
             if (json_last_error() != JSON_ERROR_NONE)
                 throw new Exception(json_last_error_msg());
-            $result = $deepr->invokeQuery($root, $input);
+            $result = $deepr->invokeQuery($root, $input, [
+                $deepr::OPTION_SV_NS => "\\Deepr\\tests\\classes\\"
+            ]);
             $result = json_encode($result);
             $this->assertJsonStringEqualsJsonString($output, $result);
         } catch (Exception $e) {
@@ -99,14 +101,5 @@ class DeeprTest extends TestCase
         $root = new Root();
         $this->expectException(Exception::class);
         $deepr->invokeQuery($root, json_decode('{ "missingFunction": { "()": [] } }', true));
-    }
-
-    /**
-     * @depends testDeepr
-     * @param Deepr $deepr
-     */
-    public function testOptions(Deepr $deepr)
-    {
-        $this->markTestSkipped('No options available');
     }
 }

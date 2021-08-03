@@ -1,10 +1,8 @@
-{
-  "movies": [
-    {
-      "title": "Top Gun"
-    },
-    {
-      "title": "The Matrix"
-    }
-  ]
-}
+[
+  {
+    "name": "Carrie-Anne Moss"
+  },
+  {
+    "name": "Lilly Wachowski"
+  }
+]

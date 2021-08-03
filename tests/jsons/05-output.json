@@ -1,8 +1,10 @@
 {
-  "movies": {
-    "movie": {
-      "title": "The Matrix",
-      "released": 1999
+  "movies": [
+    {
+      "title": "The Matrix"
+    },
+    {
+      "title": "Top Gun"
     }
-  }
+  ]
 }

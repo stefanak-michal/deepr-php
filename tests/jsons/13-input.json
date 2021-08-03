@@ -1,0 +1,13 @@
+{
+  "<=": {
+    "_type": "Person",
+    "id": 1
+  },
+  "=>": {
+    "name": true,
+    "getMovies": {
+      "()": [],
+      "title": true
+    }
+  }
+}
