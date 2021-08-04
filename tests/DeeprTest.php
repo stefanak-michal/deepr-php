@@ -48,6 +48,10 @@ class DeeprTest extends TestCase
      */
     public function testInvokeQueries(string $input, string $output, Deepr $deepr)
     {
+        echo json_encode(json_decode($input, true), JSON_PRETTY_PRINT)
+            . PHP_EOL
+            . json_encode(json_decode($output, true), JSON_PRETTY_PRINT);
+
         try {
             $root = new Root();
             $input = json_decode($input, true);
@@ -108,7 +112,7 @@ class DeeprTest extends TestCase
     {
         $root = new Root();
         $this->expectException(Exception::class);
-        $this->expectExceptionCode(4);
+        $this->expectExceptionCode($deepr::ERROR_STRUCTURE);
         $deepr->invokeQuery($root, json_decode('{ "[]": [] }', true));
     }
 
@@ -191,7 +195,7 @@ class DeeprTest extends TestCase
     {
         $root = new Root();
         $this->expectException(Exception::class);
-        $this->expectExceptionCode(1);
+        $this->expectExceptionCode($deepr::ERROR_AUTHORIZER);
         $deepr->invokeQuery($root, json_decode('{"sayHello":{"()":["John"]}}', true), [
             $deepr::OPTION_AUTHORIZER => function (string $key, string $operation) {
                 return false;
@@ -223,7 +227,7 @@ class DeeprTest extends TestCase
     public function testSetOptionsStringException(Deepr $deepr)
     {
         $this->expectException(Exception::class);
-        $this->expectExceptionCode(2);
+        $this->expectExceptionCode($deepr::ERROR_OPTIONS);
         $deepr->setOptions([
             $deepr::OPTION_SV_KEY => ['this has to be string and not a array'],
         ]);
@@ -236,7 +240,7 @@ class DeeprTest extends TestCase
     public function testSetOptionsArrayException(Deepr $deepr)
     {
         $this->expectException(Exception::class);
-        $this->expectExceptionCode(2);
+        $this->expectExceptionCode($deepr::ERROR_OPTIONS);
         $deepr->setOptions([
             $deepr::OPTION_IGNORE_KEYS => 'has to be array or empty value',
         ]);
@@ -249,9 +253,24 @@ class DeeprTest extends TestCase
     public function testSetOptionsCallableException(Deepr $deepr)
     {
         $this->expectException(Exception::class);
-        $this->expectExceptionCode(2);
+        $this->expectExceptionCode($deepr::ERROR_OPTIONS);
         $deepr->setOptions([
             $deepr::OPTION_AUTHORIZER => 'this has to be callable or null',
         ]);
+    }
+
+    /**
+     * @depends testDeepr
+     * @param Deepr $deepr
+     */
+    public function testFaultTolerant(Deepr $deepr)
+    {
+        try {
+            $root = new Root();
+            $result = $deepr->invokeQuery($root, json_decode('{"abc?": true, "method?": {"()": []}}', true));
+            $this->assertEquals([], $result);
+        } catch (Exception $e) {
+            $this->markTestIncomplete($e->getMessage());
+        }
     }
 }
