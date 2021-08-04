@@ -269,7 +269,7 @@ final class Deepr
                     foreach ($root->getChildren() as $child) {
                         $this->recursion($child, $k, $v);
                     }
-                } elseif (substr($k, -1) !== '?') {
+                } elseif (strpos($k, '?') === false) {
                     throw new Exception('Missing method ' . $key, self::ERROR_MISSING);
                 }
             } elseif ($v === true) {
@@ -279,7 +279,7 @@ final class Deepr
                         $this->authorize($key);
                         $root->add(new Value($root->$key), $k);
                     }
-                } elseif (substr($k, -1) !== '?') {
+                } elseif (strpos($k, '?') === false) {
                     throw new Exception('Missing property ' . $key, self::ERROR_MISSING);
                 }
             } elseif (property_exists($root, $key)) {
@@ -340,7 +340,7 @@ final class Deepr
      */
     private function getKey(string $key, bool $alias = true): string
     {
-        $key = rtrim($key, '?');
+        $key = str_replace('?', '', $key);
         if (strpos($key, '=>') === false)
             return $key;
 
