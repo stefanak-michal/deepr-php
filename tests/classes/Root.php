@@ -33,4 +33,14 @@ class Root extends Collection
     {
         return new Value('2021-07-20');
     }
+
+    /**
+     * @param string $value
+     * @param string $prefix
+     * @return IComponent
+     */
+    public function sayHello(string $value, string $prefix = 'Hello'): IComponent
+    {
+        return new Value($prefix . ' ' . $value . '!');
+    }
 }
