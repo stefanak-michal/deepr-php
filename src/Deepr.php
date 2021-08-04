@@ -254,21 +254,25 @@ final class Deepr
 
                 if (method_exists($root, $key)) {
                     $data = $root->{$key}(...$v['()']);
-                    if ($root === $data) {
+
+                    if (is_null($data)) {
+                        $this->recursion($root, $key, $v);
+                        $collection = new Collection();
+                        $collection->add($root, $k);
+                        $root = $collection;
+                        return;
+                    }
+
+                    if ($root === $data)
                         $root = new Collection();
-                    }
-                    if ($data instanceof Collection && count($data->getChildren())) {
-                        foreach ($data->getChildren() as $child) {
+                    if ($data instanceof Collection) {
+                        foreach ($data->getChildren() as $child)
                             $this->recursion($child, '', $v);
-                        }
-                    } else {
-                        $this->recursion($data, $key, $v);
                     }
-                    $root->add($data, $k);
-                } elseif ($root instanceof Collection && count($root->getChildren()) && method_exists($root->getChildren()[0], $key)) {
-                    foreach ($root->getChildren() as $child) {
-                        $this->recursion($child, $k, $v);
-                    }
+                    if ($data instanceof IComponent)
+                        $root->add($data, $k);
+                    else
+                        throw new Exception('Method has to return instance of IComponent or null', self::ERROR_STRUCTURE);
                 } elseif (strpos($k, '?') === false) {
                     throw new Exception('Missing method ' . $key, self::ERROR_MISSING);
                 }
