@@ -56,6 +56,27 @@ final class Deepr
     const OPTION_AUTHORIZER = 6;
 
     /**
+     * Authorizer
+     */
+    const ERROR_AUTHORIZER = 1;
+    /**
+     * Set options
+     */
+    const ERROR_OPTIONS = 2;
+    /**
+     * Get class instance
+     */
+    const ERROR_INSTANCE = 3;
+    /**
+     * Wrong structure of classes
+     */
+    const ERROR_STRUCTURE = 4;
+    /**
+     * Missing property or method
+     */
+    const ERROR_MISSING = 5;
+
+    /**
      * Enable to see query traversal
      * @var bool
      */
@@ -119,7 +140,7 @@ final class Deepr
                             if (empty($this->options[$constant->getValue()]))
                                 $this->options[$constant->getValue()] = '';
                             else
-                                throw new Exception($constant->getName() . ' accept value of type string', 2);
+                                throw new Exception($constant->getName() . ' accept value of type string', self::ERROR_OPTIONS);
                         }
                         break;
                     case 'mixed':
@@ -129,7 +150,7 @@ final class Deepr
                             if (empty($this->options[$constant->getValue()]))
                                 $this->options[$constant->getValue()] = [];
                             else
-                                throw new Exception($constant->getName() . ' accept value of type array', 2);
+                                throw new Exception($constant->getName() . ' accept value of type array', self::ERROR_OPTIONS);
                         }
                         break;
                     case 'callable':
@@ -137,7 +158,7 @@ final class Deepr
                             if (empty($this->options[$constant->getValue()]))
                                 $this->options[$constant->getValue()] = null;
                             else
-                                throw new Exception($constant->getName() . ' accept value of type callable or null', 2);
+                                throw new Exception($constant->getName() . ' accept value of type callable or null', self::ERROR_OPTIONS);
                         }
                         break;
                 }
@@ -157,11 +178,11 @@ final class Deepr
     private function getInstance(array $args): IComponent
     {
         if (!array_key_exists($this->options[self::OPTION_SV_KEY], $args))
-            throw new Exception('Source values type key not found in arguments', 3);
+            throw new Exception('Source values type key not found in arguments', self::ERROR_INSTANCE);
 
         $cls = $this->options[self::OPTION_SV_NS] . $args[$this->options[self::OPTION_SV_KEY]];
         if (!class_exists($cls))
-            throw new Exception('Requested class "' . $cls . '" does not exists', 3);
+            throw new Exception('Requested class "' . $cls . '" does not exists', self::ERROR_INSTANCE);
 
         $reflection = new ReflectionClass($cls);
         $invokeArgs = [];
@@ -174,7 +195,7 @@ final class Deepr
 
         $instance = new $cls(...$invokeArgs);
         if (!($instance instanceof IComponent))
-            throw new Exception($cls . ' has to implement IComponent', 3);
+            throw new Exception($cls . ' has to implement IComponent', self::ERROR_STRUCTURE);
 
         return $instance;
     }
@@ -205,7 +226,7 @@ final class Deepr
             } elseif ($k === '[]' && !empty($action)) {
                 $this->debug($action . ' []');
                 if (!($root instanceof ILoadable))
-                    throw new Exception('To access collection of class it has to implement ILoadable interface', 4);
+                    throw new Exception('To access collection of class it has to implement ILoadable interface', self::ERROR_STRUCTURE);
 
                 $tmpValues = $values;
                 unset($tmpValues['[]']);
@@ -221,6 +242,7 @@ final class Deepr
                         $root->add($child, $name);
                     }
                 }
+                return;
             } elseif ($k === '()') {
                 continue;
             } elseif (is_array($v) && array_key_exists('()', $v)) {
@@ -235,30 +257,38 @@ final class Deepr
                     if ($root === $data) {
                         $root = new Collection();
                     }
-                    $this->recursion($data, $key, $v);
-                    if ($data instanceof Collection) {
+                    if ($data instanceof Collection && count($data->getChildren())) {
                         foreach ($data->getChildren() as $child) {
                             $this->recursion($child, '', $v);
                         }
+                    } else {
+                        $this->recursion($data, $key, $v);
                     }
                     $root->add($data, $k);
-                } elseif ($root instanceof Collection) {
+                } elseif ($root instanceof Collection && count($root->getChildren()) && method_exists($root->getChildren()[0], $key)) {
                     foreach ($root->getChildren() as $child) {
                         $this->recursion($child, $k, $v);
                     }
+                } elseif (substr($k, -1) !== '?') {
+                    throw new Exception('Missing method ' . $key, self::ERROR_MISSING);
                 }
             } elseif ($v === true) {
                 $this->debug($action . ' ' . $k . ' true');
-                if (property_exists($root, $key) && $this->checkPropertyKey($key)) {
-                    $this->authorize($key);
-                    $root->add(new Value($root->$key), $k);
+                if (property_exists($root, $key)) {
+                    if ($this->checkPropertyKey($key)) {
+                        $this->authorize($key);
+                        $root->add(new Value($root->$key), $k);
+                    }
+                } elseif (substr($k, -1) !== '?') {
+                    throw new Exception('Missing property ' . $key, self::ERROR_MISSING);
                 }
             } elseif (property_exists($root, $key)) {
                 $this->debug('property ' . $key);
                 $collection = $root->$key;
-                if (is_string($collection) && class_exists($collection)) {
+                if (is_string($collection) && class_exists($collection))
                     $collection = new $collection();
-                }
+                if (!($collection instanceof Collection))
+                    throw new Exception('Property has to be instance of collection class or class name', self::ERROR_STRUCTURE);
                 $this->recursion($collection, $key, $v);
                 $root->add($collection, $k);
             } elseif (is_array($v)) {
@@ -298,7 +328,7 @@ final class Deepr
     private function authorize(string $key, string $operation = 'get')
     {
         if (is_callable($this->options[self::OPTION_AUTHORIZER]) && $this->options[self::OPTION_AUTHORIZER]($key, $operation) === false) {
-            throw new Exception('Operation not allowed by authorizer', 1);
+            throw new Exception('Operation not allowed by authorizer', self::ERROR_AUTHORIZER);
         }
     }
 
@@ -310,6 +340,7 @@ final class Deepr
      */
     private function getKey(string $key, bool $alias = true): string
     {
+        $key = rtrim($key, '?');
         if (strpos($key, '=>') === false)
             return $key;
 
