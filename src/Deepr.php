@@ -9,6 +9,7 @@ use Deepr\components\{
     Value
 };
 use \Exception;
+use \ReflectionClass;
 
 /**
  * Class Deepr
@@ -22,12 +23,37 @@ final class Deepr
 {
     /**
      * Source Values argument key
+     * @param string
      */
     const OPTION_SV_KEY = 1;
     /**
      * Source values class names namespace prefix
+     * @param string
      */
     const OPTION_SV_NS = 2;
+    /**
+     * A context that will be passed as the last parameter to all invoked methods.
+     * `null` value is ignored and it's not passed as argument
+     * @param mixed
+     */
+    const OPTION_CONTEXT = 3;
+    /**
+     * A key or an array of keys to be ignored when executing the query. A key can be specified as a string or a RegExp.
+     * @param array
+     */
+    const OPTION_IGNORE_KEYS = 4;
+    /**
+     * A key or an array of keys to be accepted regardless if they are ignored using the ignoreKeys option. A key can be specified as a string or a RegExp.
+     * @param array
+     */
+    const OPTION_ACCEPT_KEYS = 5;
+    /**
+     * A function that is called for each key to authorize any operation.
+     * The function receives a key and an operation which can be either 'get' for reading an attribute or 'call' for invoking a method.
+     * The function must return true to authorize an operation. If false is returned, the evaluation of the query stops immediately, and an error is thrown.
+     * @param callable
+     */
+    const OPTION_AUTHORIZER = 6;
 
     /**
      * Enable to see query traversal
@@ -41,7 +67,11 @@ final class Deepr
      */
     private static $defaultOptions = [
         self::OPTION_SV_KEY => '_type',
-        self::OPTION_SV_NS => ''
+        self::OPTION_SV_NS => '',
+        self::OPTION_CONTEXT => null,
+        self::OPTION_IGNORE_KEYS => [],
+        self::OPTION_ACCEPT_KEYS => [],
+        self::OPTION_AUTHORIZER => null
     ];
 
     /**
@@ -52,6 +82,7 @@ final class Deepr
 
     /**
      * Apply query on specific Collection instance
+     * @see setOptions()
      * @param Collection $root
      * @param array $query
      * @param array $options
@@ -60,13 +91,60 @@ final class Deepr
      */
     public function invokeQuery(Collection $root, array $query, array $options = []): array
     {
-        $this->options = array_replace(self::$defaultOptions, array_intersect_key($options, self::$defaultOptions));
+        $this->setOptions($options);
 
         if (key($query) === '||')
             throw new Exception('Parallel processing not implemented');
 
         $this->recursion($root, key($query), $query);
         return $root->execute($this->options);
+    }
+
+    /**
+     * @link https://github.com/stefanak-michal/deepr-php/wiki
+     * @param array $options
+     * @return $this
+     * @throws Exception
+     */
+    public function setOptions(array $options = []): Deepr
+    {
+        $this->options = array_replace(self::$defaultOptions, array_intersect_key($options, self::$defaultOptions));
+
+        $reflection = new ReflectionClass($this);
+        foreach ($reflection->getReflectionConstants() as $constant) {
+            if (preg_match("/@param ([a-z]+)/", $constant->getDocComment(), $match)) {
+                switch ($match[1]) {
+                    case 'string':
+                        if (!is_string($this->options[$constant->getValue()])) {
+                            if (empty($this->options[$constant->getValue()]))
+                                $this->options[$constant->getValue()] = '';
+                            else
+                                throw new Exception($constant->getName() . ' accept value of type string', 2);
+                        }
+                        break;
+                    case 'mixed':
+                        break;
+                    case 'array':
+                        if (!is_array($this->options[$constant->getValue()])) {
+                            if (empty($this->options[$constant->getValue()]))
+                                $this->options[$constant->getValue()] = [];
+                            else
+                                throw new Exception($constant->getName() . ' accept value of type array', 2);
+                        }
+                        break;
+                    case 'callable':
+                        if (!is_callable($this->options[$constant->getValue()])) {
+                            if (empty($this->options[$constant->getValue()]))
+                                $this->options[$constant->getValue()] = null;
+                            else
+                                throw new Exception($constant->getName() . ' accept value of type callable or null', 2);
+                        }
+                        break;
+                }
+            }
+        }
+
+        return $this;
     }
 
     /**
@@ -79,13 +157,13 @@ final class Deepr
     private function getInstance(array $args): IComponent
     {
         if (!array_key_exists($this->options[self::OPTION_SV_KEY], $args))
-            throw new Exception('Source values type key not found in arguments');
+            throw new Exception('Source values type key not found in arguments', 3);
 
         $cls = $this->options[self::OPTION_SV_NS] . $args[$this->options[self::OPTION_SV_KEY]];
         if (!class_exists($cls))
-            throw new Exception('Requested class "' . $cls . '" does not exists');
+            throw new Exception('Requested class "' . $cls . '" does not exists', 3);
 
-        $reflection = new \ReflectionClass($cls);
+        $reflection = new ReflectionClass($cls);
         $invokeArgs = [];
         if ($reflection->getConstructor()) {
             foreach ($reflection->getConstructor()->getParameters() as $parameter) {
@@ -96,7 +174,7 @@ final class Deepr
 
         $instance = new $cls(...$invokeArgs);
         if (!($instance instanceof IComponent))
-            throw new Exception($cls . ' has to implement IComponent');
+            throw new Exception($cls . ' has to implement IComponent', 3);
 
         return $instance;
     }
@@ -113,24 +191,21 @@ final class Deepr
             $key = $this->getKey($k, false);
 
             if ($k === '<=') {
-                if (self::$debug)
-                    var_dump('<=');
+                $this->debug('<=');
                 $tmpValues = $values;
                 unset($tmpValues['<=']);
                 $instance = $this->getInstance($v);
                 $root = $instance;
             } elseif (is_int($k)) {
-                if (self::$debug)
-                    var_dump('array');
+                $this->debug('array');
                 $clone = clone $root;
                 $clone->clear();
                 $this->recursion($clone, $action, $v);
                 $root->add($clone);
             } elseif ($k === '[]' && !empty($action)) {
-                if (self::$debug)
-                    var_dump($action . ' []');
+                $this->debug($action . ' []');
                 if (!($root instanceof ILoadable))
-                    throw new Exception('To access collection of class it has to implement ILoadable interface');
+                    throw new Exception('To access collection of class it has to implement ILoadable interface', 4);
 
                 $tmpValues = $values;
                 unset($tmpValues['[]']);
@@ -149,8 +224,11 @@ final class Deepr
             } elseif ($k === '()') {
                 continue;
             } elseif (is_array($v) && array_key_exists('()', $v)) {
-                if (self::$debug)
-                    var_dump($key . ' ()');
+                $this->debug($key . ' ()');
+                $this->authorize($key, 'call');
+
+                if (!is_null($this->options[self::OPTION_CONTEXT]))
+                    $v['()'][] = $this->options[self::OPTION_CONTEXT];
 
                 if (method_exists($root, $key)) {
                     $data = $root->{$key}(...$v['()']);
@@ -170,14 +248,13 @@ final class Deepr
                     }
                 }
             } elseif ($v === true) {
-                if (self::$debug)
-                    var_dump($action . ' ' . $k . ' true');
-                if (property_exists($root, $key)) {
+                $this->debug($action . ' ' . $k . ' true');
+                if (property_exists($root, $key) && $this->checkPropertyKey($key)) {
+                    $this->authorize($key);
                     $root->add(new Value($root->$key), $k);
                 }
             } elseif (property_exists($root, $key)) {
-                if (self::$debug)
-                    var_dump('property ' . $key);
+                $this->debug('property ' . $key);
                 $collection = $root->$key;
                 if (is_string($collection) && class_exists($collection)) {
                     $collection = new $collection();
@@ -185,12 +262,43 @@ final class Deepr
                 $this->recursion($collection, $key, $v);
                 $root->add($collection, $k);
             } elseif (is_array($v)) {
-                if (self::$debug)
-                    var_dump($action . ' array nest');
+                $this->debug($action . ' array nest');
                 $clone = clone $root;
                 $this->recursion($clone, $action, $v);
                 $root->add($clone, $k);
             }
+        }
+    }
+
+    /**
+     * Verify if key should be ignored or accepted
+     * @param string $key
+     * @return bool
+     */
+    private function checkPropertyKey(string $key): bool
+    {
+        foreach ($this->options[self::OPTION_ACCEPT_KEYS] as $acceptKey) {
+            if ($acceptKey[0] == '/' && preg_match($acceptKey, $key) || $key === $acceptKey)
+                return true;
+        }
+
+        foreach ($this->options[self::OPTION_IGNORE_KEYS] as $ignoreKey) {
+            if ($ignoreKey[0] == '/' && preg_match($ignoreKey, $key) || $key === $ignoreKey)
+                return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param string $key
+     * @param string $operation
+     * @throws Exception
+     */
+    private function authorize(string $key, string $operation = 'get')
+    {
+        if (is_callable($this->options[self::OPTION_AUTHORIZER]) && $this->options[self::OPTION_AUTHORIZER]($key, $operation) === false) {
+            throw new Exception('Operation not allowed by authorizer', 1);
         }
     }
 
@@ -207,6 +315,15 @@ final class Deepr
 
         list($k, $a) = explode('=>', $key, 2);
         return $alias ? ($a ?? $k) : $k;
+    }
+
+    /**
+     * @param string $msg
+     */
+    private function debug(string $msg)
+    {
+        if (self::$debug)
+            var_dump($msg);
     }
 
 }
