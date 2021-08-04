@@ -198,4 +198,60 @@ class DeeprTest extends TestCase
             }
         ]);
     }
+
+    /**
+     * @depends testDeepr
+     * @param Deepr $deepr
+     */
+    public function testSetOptions(Deepr $deepr)
+    {
+        try {
+            $deepr->setOptions([
+                $deepr::OPTION_SV_KEY => null,
+                $deepr::OPTION_IGNORE_KEYS => null
+            ]);
+            $this->assertInstanceOf(Deepr::class, $deepr);
+        } catch (Exception $e) {
+            $this->markTestIncomplete($e->getMessage());
+        }
+    }
+
+    /**
+     * @depends testDeepr
+     * @param Deepr $deepr
+     */
+    public function testSetOptionsStringException(Deepr $deepr)
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionCode(2);
+        $deepr->setOptions([
+            $deepr::OPTION_SV_KEY => ['this has to be string and not a array'],
+        ]);
+    }
+
+    /**
+     * @depends testDeepr
+     * @param Deepr $deepr
+     */
+    public function testSetOptionsArrayException(Deepr $deepr)
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionCode(2);
+        $deepr->setOptions([
+            $deepr::OPTION_IGNORE_KEYS => 'has to be array or empty value',
+        ]);
+    }
+
+    /**
+     * @depends testDeepr
+     * @param Deepr $deepr
+     */
+    public function testSetOptionsCallableException(Deepr $deepr)
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionCode(2);
+        $deepr->setOptions([
+            $deepr::OPTION_AUTHORIZER => 'this has to be callable or null',
+        ]);
+    }
 }
