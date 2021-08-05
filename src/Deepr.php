@@ -265,7 +265,9 @@ final class Deepr
 
                     if ($root === $data)
                         $root = new Collection();
-                    if ($data instanceof Collection) {
+                    if (is_subclass_of($data, Collection::class))
+                        $this->recursion($data, '', $v);
+                    elseif ($data instanceof Collection) {
                         foreach ($data->getChildren() as $child)
                             $this->recursion($child, '', $v);
                     }
