@@ -16,9 +16,9 @@
         "_type": "Movie"
       },
       "byTitle=>": {
-        "()": [
-          "Top Gun"
-        ],
+        "()": {
+          "title": "Top Gun"
+        },
         "title": true
       }
     }

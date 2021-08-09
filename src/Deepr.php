@@ -253,7 +253,19 @@ final class Deepr
                     $v['()'][] = $this->options[self::OPTION_CONTEXT];
 
                 if (method_exists($root, $key)) {
-                    $data = $root->{$key}(...$v['()']);
+                    if (count(array_filter(array_keys($v['()']), 'is_int')) == count($v['()']))
+                        $data = $root->{$key}(...$v['()']);
+                    else {
+                        $reflection = new \ReflectionClass($root);
+                        $method = $reflection->getMethod($key);
+                        $invokeArgs = [];
+                        foreach ($method->getParameters() as $parameter) {
+                            $invokeArgs[] = array_key_exists($parameter->getName(), $v['()'])
+                                ? $v['()'][$parameter->getName()]
+                                : $parameter->getDefaultValue();
+                        }
+                        $data = $method->invokeArgs($root, $invokeArgs);
+                    }
 
                     if (is_null($data)) {
                         $this->recursion($root, $key, $v);
