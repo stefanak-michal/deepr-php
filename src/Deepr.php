@@ -103,12 +103,12 @@ final class Deepr
 
     /**
      * Apply query on specific Collection instance
-     * @see setOptions()
      * @param Collection $root
      * @param array $query
      * @param array $options
      * @return array
      * @throws Exception
+     * @see setOptions()
      */
     public function invokeQuery(Collection $root, array $query, array $options = []): array
     {
@@ -188,8 +188,9 @@ final class Deepr
         $invokeArgs = [];
         if ($reflection->getConstructor()) {
             foreach ($reflection->getConstructor()->getParameters() as $parameter) {
-                if (array_key_exists($parameter->getName(), $args))
-                    $invokeArgs[] = $args[$parameter->getName()];
+                $invokeArgs[] = array_key_exists($parameter->getName(), $args)
+                    ? $args[$parameter->getName()]
+                    : $parameter->getDefaultValue();
             }
         }
 
