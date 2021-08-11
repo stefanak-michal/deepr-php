@@ -10,7 +10,7 @@ Check [wiki](https://github.com/stefanak-michal/deepr-php/wiki) for more informa
 
 ## Requirements
 
-- PHP >= 7.1
+- PHP >= 7.2
 
 ## Installation
 
