@@ -2,15 +2,13 @@
 
 namespace Deepr\tests\classes;
 
-use Deepr\components\Collection;
-
 /**
  * Class Person
  * @package Deepr\tests\classes
  * @author Michal Stefanak
  * @link https://github.com/stefanak-michal/deepr-php
  */
-class Person extends Collection
+class Person
 {
     public $_id;
     /**
@@ -18,8 +16,15 @@ class Person extends Collection
      * @var string
      */
     public $name;
+    /**
+     * @var int
+     */
     public $born;
 
+    /**
+     * IDs of movies
+     * @var array
+     */
     public $_movies;
 
     /**
@@ -43,11 +48,11 @@ class Person extends Collection
     /**
      * RPC method to get movies in which actor acted
      * {..actor: {"getMovies":{"()": []}}
-     * @return Collection
+     * @return array
      */
-    public function getMovies(): Collection
+    public function getMovies(): array
     {
-        $items = new Collection();
+        $items = [];
         if (empty($this->_movies))
             return $items;
         foreach (Database::getMovies() as $row) {
@@ -57,7 +62,7 @@ class Person extends Collection
                 $movie->title = $row['title'];
                 $movie->released = $row['released'];
                 $movie->tagline = $row['tagline'];
-                $items->add($movie);
+                $items[] = $movie;
             }
         }
         return $items;

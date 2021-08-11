@@ -2,8 +2,6 @@
 
 namespace Deepr\tests\classes;
 
-use Deepr\components\{Collection, Value, IComponent};
-
 /**
  * Class Root
  * This object is provided for Deepr->invokeQuery
@@ -11,14 +9,14 @@ use Deepr\components\{Collection, Value, IComponent};
  * @author Michal Stefanak
  * @link https://github.com/stefanak-michal/deepr-php
  */
-class Root extends Collection
+class Root
 {
     /**
      * Reference to Movies collection
      * Only public properties are accessible
-     * {"movies": ...}
+     * {"movies": {...}}
      * @internal It can be instance of class Movies directly
-     * @var string|Collection
+     * @var string|Movies
      * @see \Deepr\tests\classes\Movies
      */
     public $movies = Movies::class;
@@ -26,21 +24,24 @@ class Root extends Collection
     /**
      * Sample method
      * RPC methods has to be public and returns IComponent
-     * {"date": {"()": []}}
-     * @return IComponent
+     * {"info": {"()": [], "date": true}}
+     * @see \Deepr\tests\DeeprTest::testDeepr()
+     * @return array
      */
-    public function date(): IComponent
+    public function info(): array
     {
-        return new Value('2021-07-20');
+        return ['date' => '2021-07-20'];
     }
 
     /**
+     * For testing OPTION_CONTEXT
+     * @see \Deepr\tests\DeeprTest::testOptionContext()
      * @param string $value
      * @param string $prefix
-     * @return IComponent
+     * @return array
      */
-    public function sayHello(string $value, string $prefix = 'Hello'): IComponent
+    public function sayHello(string $value, string $prefix = 'Hello'): array
     {
-        return new Value($prefix . ' ' . $value . '!');
+        return ['msg' => $prefix . ' ' . $value . '!'];
     }
 }

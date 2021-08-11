@@ -2,14 +2,9 @@
 
 namespace Deepr;
 
-use Deepr\components\{
-    IComponent,
-    Collection,
-    ILoadable,
-    Value
-};
-use \Exception;
-use \ReflectionClass;
+use Exception;
+use Generator;
+use ReflectionClass;
 
 /**
  * Class Deepr
@@ -17,20 +12,9 @@ use \ReflectionClass;
  * @package Deepr
  * @author Michal Stefanak
  * @link https://github.com/stefanak-michal/deepr-php
- * @link https://refactoring.guru/design-patterns/composite
  */
 final class Deepr
 {
-    /**
-     * Source Values argument key
-     * @param string
-     */
-    const OPTION_SV_KEY = 1;
-    /**
-     * Source values class names namespace prefix
-     * @param string
-     */
-    const OPTION_SV_NS = 2;
     /**
      * A context that will be passed as the last parameter to all invoked methods.
      * `null` value is ignored and it's not passed as argument
@@ -87,8 +71,6 @@ final class Deepr
      * @var array
      */
     private static $defaultOptions = [
-        self::OPTION_SV_KEY => '_type',
-        self::OPTION_SV_NS => '',
         self::OPTION_CONTEXT => null,
         self::OPTION_IGNORE_KEYS => [],
         self::OPTION_ACCEPT_KEYS => [],
@@ -102,23 +84,23 @@ final class Deepr
     private $options;
 
     /**
-     * Apply query on specific Collection instance
-     * @param Collection $root
+     * Apply query on specific object instance
+     * @param object $root
      * @param array $query
      * @param array $options
      * @return array
      * @throws Exception
      * @see setOptions()
      */
-    public function invokeQuery(Collection $root, array $query, array $options = []): array
+    public function invokeQuery(object $root, array $query, array $options = []): array
     {
         $this->setOptions($options);
 
         if (key($query) === '||')
             throw new Exception('Parallel processing not implemented');
 
-        $this->recursion($root, key($query), $query);
-        return $root->execute($this->options);
+        $output = $this->iterate($root, $query);
+        return iterator_to_array($output);
     }
 
     /**
@@ -169,153 +151,117 @@ final class Deepr
     }
 
     /**
-     * Create instance of structure class by parameters
-     * @link https://github.com/deeprjs/deepr#source-values
-     * @param array $args
-     * @return IComponent
+     * Iterate through query
+     * @param mixed $root
+     * @param array $query
+     * @return Generator
      * @throws Exception
      */
-    private function getInstance(array $args): IComponent
+    public function iterate($root, array $query): Generator
     {
-        if (!array_key_exists($this->options[self::OPTION_SV_KEY], $args))
-            throw new Exception('Source values type key not found in arguments', self::ERROR_INSTANCE);
+        foreach ($query as $key => $value) {
+            $key2 = strpos($key, '=>') > 0
+                ? substr($key, 0, strpos($key, '=>'))
+                : $key;
 
-        $cls = $this->options[self::OPTION_SV_NS] . $args[$this->options[self::OPTION_SV_KEY]];
-        if (!class_exists($cls))
-            throw new Exception('Requested class "' . $cls . '" does not exists', self::ERROR_INSTANCE);
+            if ($key === '<=') {
+                $this->debug('<=');
+                if (is_object($value)) {
+                    $root = $value;
+                } else {
+                    throw new Exception('Key "<=" has to contains class instance. Are you using proper deserializer?', self::ERROR_INSTANCE);
+                }
+            } elseif ($key === '=>' && is_array($value)) {
+                $this->debug('=>');
+                yield from $this->iterate($root, $value);
+            } elseif ($value === true) {
+                $this->debug('property ' . $key);
+                if ($this->checkPropertyKey($key2)) {
+                    if (is_object($root) && property_exists($root, $key2)) {
+                        $this->authorize($root, $key2);
+                        yield $key => $root->$key2;
+                    } elseif (is_array($root) && array_key_exists($key2, $root)) {
+                        $this->authorize($root, $key2);
+                        yield $key => $root[$key2];
+                    } elseif ($key[-1] != '?') {
+                        throw new Exception('Property access is available only for class instance or array.', self::ERROR_STRUCTURE);
+                    }
+                }
+            } elseif (is_array($value) && array_key_exists('()', $value)) {
+                $this->debug('method ' . $key);
+                if (is_object($root) && method_exists($root, $key2)) {
+                    $this->authorize($root, $key2, 'call');
+                    $tmp = $value;
+                    unset($tmp['()']);
+                    $result = $this->invokeMethod($root, $key2, $value['()']);
+                    return yield $key => iterator_to_array($this->iterate($result, $tmp));
+                } elseif ($key[-1] != '?') {
+                    throw new Exception('You are trying access not existing method.', self::ERROR_MISSING);
+                }
+            } elseif (is_array($value) && is_object($root) && property_exists($root, $key2)) {
+                $this->debug('property cls ' . $key);
+                if (is_string($root->$key2) && class_exists($root->$key2))
+                    $root->$key2 = new $root->$key2();
+                yield $key => iterator_to_array($this->iterate($root->$key2, $value));
+            } elseif ($key === '[]') {
+                $this->debug('array access');
+                if (is_int($value)) {
+                    $offset = $value;
+                    $length = 1;
+                } elseif (is_array($value)) {
+                    $offset = $value[0] ?? 0;
+                    $length = $value[1] ?? null;
+                } else {
+                    throw new Exception('Wrong arguments for array access.', self::ERROR_STRUCTURE);
+                }
 
-        $reflection = new ReflectionClass($cls);
-        $invokeArgs = [];
-        if ($reflection->getConstructor()) {
-            foreach ($reflection->getConstructor()->getParameters() as $parameter) {
+                $tmp = $query;
+                unset($tmp['[]']);
+
+                if (is_array($root))
+                    $items = array_slice($root, $offset, $length);
+                elseif (is_object($root) && is_callable($root))
+                    $items = $root($offset, $length);
+                else
+                    throw new Exception('Array access is available only for array or class implementing Arrayable interface', self::ERROR_STRUCTURE);
+
+                foreach ($items as $item) {
+                    if (is_int($value))
+                        yield from $this->iterate($item, $tmp);
+                    else
+                        yield iterator_to_array($this->iterate($item, $tmp));
+                }
+                return null;
+            } elseif (is_array($value)) {
+                $this->debug('array values');
+                yield $key => iterator_to_array($this->iterate($root, $value));
+            }
+        }
+    }
+
+    /**
+     * @param object $root
+     * @param string $method
+     * @param array $args
+     * @return mixed
+     * @throws Exception
+     */
+    private function invokeMethod(object $root, string $method, array $args)
+    {
+        if (!is_null($this->options[self::OPTION_CONTEXT]))
+            $args[] = $this->options[self::OPTION_CONTEXT];
+
+        if (count(array_filter(array_keys($args), 'is_int')) == count($args)) {
+            return $root->{$method}(...$args);
+        } else {
+            $refMethod = (new ReflectionClass($root))->getMethod($method);
+            $invokeArgs = [];
+            foreach ($refMethod->getParameters() as $parameter) {
                 $invokeArgs[] = array_key_exists($parameter->getName(), $args)
                     ? $args[$parameter->getName()]
                     : $parameter->getDefaultValue();
             }
-        }
-
-        $instance = new $cls(...$invokeArgs);
-        if (!($instance instanceof IComponent))
-            throw new Exception($cls . ' has to implement IComponent', self::ERROR_STRUCTURE);
-
-        return $instance;
-    }
-
-    /**
-     * @param IComponent $root
-     * @param string $action
-     * @param array $values
-     * @throws Exception
-     */
-    private function recursion(IComponent &$root, string $action, array $values)
-    {
-        foreach ($values as $k => $v) {
-            $key = $this->getKey($k, false);
-
-            if ($k === '<=') {
-                $this->debug('<=');
-                $tmpValues = $values;
-                unset($tmpValues['<=']);
-                $instance = $this->getInstance($v);
-                $root = $instance;
-            } elseif (is_int($k)) {
-                $this->debug('array');
-                $clone = clone $root;
-                $clone->clear();
-                $this->recursion($clone, $action, $v);
-                $root->add($clone);
-            } elseif ($k === '[]' && !empty($action)) {
-                $this->debug($action . ' []');
-                if (!($root instanceof ILoadable))
-                    throw new Exception('To access collection of class it has to implement ILoadable interface', self::ERROR_STRUCTURE);
-
-                $tmpValues = $values;
-                unset($tmpValues['[]']);
-
-                if (is_int($v)) {
-                    foreach ($root->load($v, 1)->getChildren() as $child) {
-                        $this->recursion($child, $action, $tmpValues);
-                        $root = $child;
-                    }
-                } elseif (is_array($v)) {
-                    foreach ($root->load($v[0] ?? 0, $v[1] ?? null)->getChildren() as $name => $child) {
-                        $this->recursion($child, $action, $tmpValues);
-                        $root->add($child, $name);
-                    }
-                }
-                return;
-            } elseif ($k === '()') {
-                continue;
-            } elseif (is_array($v) && array_key_exists('()', $v)) {
-                $this->debug($key . ' ()');
-                $this->authorize($key, 'call');
-
-                if (!is_null($this->options[self::OPTION_CONTEXT]))
-                    $v['()'][] = $this->options[self::OPTION_CONTEXT];
-
-                if (method_exists($root, $key)) {
-                    if (count(array_filter(array_keys($v['()']), 'is_int')) == count($v['()']))
-                        $data = $root->{$key}(...$v['()']);
-                    else {
-                        $reflection = new \ReflectionClass($root);
-                        $method = $reflection->getMethod($key);
-                        $invokeArgs = [];
-                        foreach ($method->getParameters() as $parameter) {
-                            $invokeArgs[] = array_key_exists($parameter->getName(), $v['()'])
-                                ? $v['()'][$parameter->getName()]
-                                : $parameter->getDefaultValue();
-                        }
-                        $data = $method->invokeArgs($root, $invokeArgs);
-                    }
-
-                    if (is_null($data)) {
-                        $this->recursion($root, $key, $v);
-                        $collection = new Collection();
-                        $collection->add($root, $k);
-                        $root = $collection;
-                        return;
-                    }
-
-                    if ($root === $data)
-                        $root = new Collection();
-                    if (is_subclass_of($data, Collection::class))
-                        $this->recursion($data, '', $v);
-                    elseif ($data instanceof Collection) {
-                        foreach ($data->getChildren() as $child)
-                            $this->recursion($child, '', $v);
-                    }
-                    if ($data instanceof IComponent)
-                        $root->add($data, $k);
-                    else
-                        throw new Exception('Method has to return instance of IComponent or null', self::ERROR_STRUCTURE);
-                } elseif (strpos($k, '?') === false) {
-                    throw new Exception('Missing method ' . $key, self::ERROR_MISSING);
-                }
-            } elseif ($v === true) {
-                $this->debug($action . ' ' . $k . ' true');
-                if (property_exists($root, $key)) {
-                    if ($this->checkPropertyKey($key)) {
-                        $this->authorize($key);
-                        $root->add(new Value($root->$key), $k);
-                    }
-                } elseif (strpos($k, '?') === false) {
-                    throw new Exception('Missing property ' . $key, self::ERROR_MISSING);
-                }
-            } elseif (property_exists($root, $key)) {
-                $this->debug('property ' . $key);
-                $collection = $root->$key;
-                if (is_string($collection) && class_exists($collection))
-                    $collection = new $collection();
-                if (!($collection instanceof Collection))
-                    throw new Exception('Property has to be instance of collection class or class name', self::ERROR_STRUCTURE);
-                $this->recursion($collection, $key, $v);
-                $root->add($collection, $k);
-            } elseif (is_array($v)) {
-                $this->debug($action . ' array nest');
-                $clone = clone $root;
-                $this->recursion($clone, $action, $v);
-                $root->add($clone, $k);
-            }
+            return $refMethod->invokeArgs($root, $invokeArgs);
         }
     }
 
@@ -340,31 +286,16 @@ final class Deepr
     }
 
     /**
+     * @param array|object $root
      * @param string $key
      * @param string $operation
      * @throws Exception
      */
-    private function authorize(string $key, string $operation = 'get')
+    private function authorize($root, string $key, string $operation = 'get')
     {
-        if (is_callable($this->options[self::OPTION_AUTHORIZER]) && $this->options[self::OPTION_AUTHORIZER]($key, $operation) === false) {
+        if (is_callable($this->options[self::OPTION_AUTHORIZER]) && $this->options[self::OPTION_AUTHORIZER]($root, $key, $operation) === false) {
             throw new Exception('Operation not allowed by authorizer', self::ERROR_AUTHORIZER);
         }
-    }
-
-    /**
-     * Get final key
-     * @param string $key
-     * @param bool $alias If you want the source key set this to false, otherwise will return target key
-     * @return string
-     */
-    private function getKey(string $key, bool $alias = true): string
-    {
-        $key = str_replace('?', '', $key);
-        if (strpos($key, '=>') === false)
-            return $key;
-
-        list($k, $a) = explode('=>', $key, 2);
-        return $alias ? ($a ?? $k) : $k;
     }
 
     /**
