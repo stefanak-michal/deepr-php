@@ -223,7 +223,7 @@ final class Deepr
                 elseif (is_object($root) && is_callable($root))
                     $items = $root($offset, $length);
                 else
-                    throw new Exception('Array access is available only for array or class implementing Arrayable interface', self::ERROR_STRUCTURE);
+                    throw new Exception('Array access is available only for array or class with __invoke method.', self::ERROR_STRUCTURE);
 
                 foreach ($items as $item) {
                     if (is_int($value))
