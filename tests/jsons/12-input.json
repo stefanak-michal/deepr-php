@@ -5,9 +5,11 @@
       "title": true,
       "getActors=>actors": {
         "()": [],
+        "[]": [],
         "name": true,
         "getMovies=>movies": {
           "()": [],
+          "[]": [],
           "title=>": true
         }
       }

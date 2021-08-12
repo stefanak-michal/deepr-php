@@ -4,6 +4,8 @@ namespace Deepr\tests;
 
 use Deepr\Deepr;
 use Deepr\tests\classes\Root;
+use Deepr\tests\classes\Deserializer;
+use Deepr\tests\classes\Serializer;
 use PHPUnit\Framework\TestCase;
 use Exception;
 
@@ -14,8 +16,6 @@ use Exception;
  * @link https://github.com/stefanak-michal/deepr-php
  *
  * @covers \Deepr\Deepr
- * @covers \Deepr\components\Collection
- * @covers \Deepr\components\Value
  */
 class DeeprTest extends TestCase
 {
@@ -29,8 +29,8 @@ class DeeprTest extends TestCase
 
         try {
             $deepr::$debug = true;
-            $result = $deepr->invokeQuery(new Root(), ['date' => ['()' => []]]);
-            $this->assertEquals(['date' => '2021-07-20'], $result);
+            $result = $deepr->invokeQuery(new Root(), (new Deserializer())->deserialize(['info=>' => ['()' => [], 'date=>' => true]]));
+            $this->assertEquals('2021-07-20', (new Serializer())->serialize($result));
             $deepr::$debug = false;
         } catch (Exception $e) {
             $this->markTestIncomplete($e->getMessage());
@@ -40,7 +40,7 @@ class DeeprTest extends TestCase
     }
 
     /**
-     * @depends testDeepr
+     * @depends      testDeepr
      * @dataProvider jsonProvider
      * @param string $input
      * @param string $output
@@ -54,14 +54,8 @@ class DeeprTest extends TestCase
 
         try {
             $root = new Root();
-            $input = json_decode($input, true);
-            if (json_last_error() != JSON_ERROR_NONE)
-                throw new Exception(json_last_error_msg());
-            $result = $deepr->invokeQuery($root, $input, [
-                $deepr::OPTION_SV_NS => "\\Deepr\\tests\\classes\\"
-            ]);
-            $result = json_encode($result);
-            $this->assertJsonStringEqualsJsonString($output, $result);
+            $result = $deepr->invokeQuery($root, (new Deserializer())->deserialize($input));
+            $this->assertJsonStringEqualsJsonString($output, (new Serializer())->serialize($result));
         } catch (Exception $e) {
             $this->markTestIncomplete($e->getMessage());
         }
@@ -101,7 +95,7 @@ class DeeprTest extends TestCase
     {
         $root = new Root();
         $this->expectException(Exception::class);
-        $deepr->invokeQuery($root, json_decode('{"||":[]}', true));
+        $deepr->invokeQuery($root, (new Deserializer())->deserialize('{"||":[]}'));
     }
 
     /**
@@ -113,7 +107,7 @@ class DeeprTest extends TestCase
         $root = new Root();
         $this->expectException(Exception::class);
         $this->expectExceptionCode($deepr::ERROR_STRUCTURE);
-        $deepr->invokeQuery($root, json_decode('{ "[]": [] }', true));
+        $deepr->invokeQuery($root, (new Deserializer())->deserialize('{ "[]": [] }'));
     }
 
     /**
@@ -124,10 +118,10 @@ class DeeprTest extends TestCase
     {
         try {
             $root = new Root();
-            $result = $deepr->invokeQuery($root, json_decode('{"movies":{"[]":2,"_id":true,"title":true}}', true), [
+            $result = $deepr->invokeQuery($root, (new Deserializer())->deserialize('{"movies":{"[]":2,"_id":true,"title":true}}'), [
                 $deepr::OPTION_IGNORE_KEYS => ['/^_/']
             ]);
-            $this->assertJsonStringEqualsJsonString(json_encode($result), '{"movies":{"title":"The Matrix Revolutions"}}');
+            $this->assertJsonStringEqualsJsonString('{"movies":{"title":"The Matrix Revolutions"}}', (new Serializer())->serialize($result));
         } catch (Exception $e) {
             $this->markTestIncomplete($e->getMessage());
         }
@@ -141,11 +135,11 @@ class DeeprTest extends TestCase
     {
         try {
             $root = new Root();
-            $result = $deepr->invokeQuery($root, json_decode('{"movies":{"[]":2,"_id":true,"title":true}}', true), [
+            $result = $deepr->invokeQuery($root, (new Deserializer())->deserialize('{"movies":{"[]":2,"_id":true,"title":true}}'), [
                 $deepr::OPTION_IGNORE_KEYS => ['/^_/'],
                 $deepr::OPTION_ACCEPT_KEYS => ['_id']
             ]);
-            $this->assertJsonStringEqualsJsonString(json_encode($result), '{"movies":{"_id":10,"title":"The Matrix Revolutions"}}');
+            $this->assertJsonStringEqualsJsonString('{"movies":{"_id":10,"title":"The Matrix Revolutions"}}', (new Serializer())->serialize($result));
         } catch (Exception $e) {
             $this->markTestIncomplete($e->getMessage());
         }
@@ -159,10 +153,10 @@ class DeeprTest extends TestCase
     {
         try {
             $root = new Root();
-            $result = $deepr->invokeQuery($root, json_decode('{"sayHello":{"()":["John"]}}', true), [
+            $result = $deepr->invokeQuery($root, (new Deserializer())->deserialize('{"sayHello":{"()":["John"], "msg=>": true}}'), [
                 $deepr::OPTION_CONTEXT => 'Hi',
             ]);
-            $this->assertEquals(['sayHello' => 'Hi John!'], $result);
+            $this->assertJsonStringEqualsJsonString('{"sayHello": "Hi John!"}', (new Serializer())->serialize($result));
         } catch (Exception $e) {
             $this->markTestIncomplete($e->getMessage());
         }
@@ -176,12 +170,13 @@ class DeeprTest extends TestCase
     {
         try {
             $root = new Root();
-            $result = $deepr->invokeQuery($root, json_decode('{"sayHello":{"()":["John"]}}', true), [
-                $deepr::OPTION_AUTHORIZER => function (string $key, string $operation) {
-                    return $key == 'sayHello' && $operation == 'call';
+            $result = $deepr->invokeQuery($root, (new Deserializer())->deserialize('{"sayHello":{"()":["John"], "msg=>": true}}'), [
+                $deepr::OPTION_AUTHORIZER => function ($root, string $key, string $operation) {
+                    return ($root instanceof Root && $key == 'sayHello' && $operation == 'call')
+                        || (is_array($root) && $key == 'msg' && $operation == 'get');
                 }
             ]);
-            $this->assertEquals(['sayHello' => 'Hello John!'], $result);
+            $this->assertJsonStringEqualsJsonString('{"sayHello": "Hello John!"}', (new Serializer())->serialize($result));
         } catch (Exception $e) {
             $this->markTestIncomplete($e->getMessage());
         }
@@ -196,8 +191,8 @@ class DeeprTest extends TestCase
         $root = new Root();
         $this->expectException(Exception::class);
         $this->expectExceptionCode($deepr::ERROR_AUTHORIZER);
-        $deepr->invokeQuery($root, json_decode('{"sayHello":{"()":["John"]}}', true), [
-            $deepr::OPTION_AUTHORIZER => function (string $key, string $operation) {
+        $deepr->invokeQuery($root, (new Deserializer())->deserialize('{"sayHello":{"()":["John"]}}'), [
+            $deepr::OPTION_AUTHORIZER => function ($root, string $key, string $operation) {
                 return false;
             }
         ]);
@@ -211,8 +206,11 @@ class DeeprTest extends TestCase
     {
         try {
             $deepr->setOptions([
-                $deepr::OPTION_SV_KEY => null,
-                $deepr::OPTION_IGNORE_KEYS => null
+                $deepr::OPTION_CONTEXT => 'abc',
+                $deepr::OPTION_IGNORE_KEYS => null,
+                $deepr::OPTION_ACCEPT_KEYS => ['/.*/'],
+                $deepr::OPTION_AUTHORIZER => function ($root, string $key, string $operation) {
+                }
             ]);
             $this->assertInstanceOf(Deepr::class, $deepr);
         } catch (Exception $e) {
@@ -229,7 +227,7 @@ class DeeprTest extends TestCase
         $this->expectException(Exception::class);
         $this->expectExceptionCode($deepr::ERROR_OPTIONS);
         $deepr->setOptions([
-            $deepr::OPTION_SV_KEY => ['this has to be string and not a array'],
+            $deepr::OPTION_ACCEPT_KEYS => 'this has to be array and not a string',
         ]);
     }
 
@@ -267,7 +265,7 @@ class DeeprTest extends TestCase
     {
         try {
             $root = new Root();
-            $result = $deepr->invokeQuery($root, json_decode('{"abc?": true, "method?": {"()": []}}', true));
+            $result = $deepr->invokeQuery($root, (new Deserializer())->deserialize('{"abc?": true, "method?": {"()": []}}'));
             $this->assertEquals([], $result);
         } catch (Exception $e) {
             $this->markTestIncomplete($e->getMessage());

@@ -2,10 +2,6 @@
 
 namespace Deepr\tests\classes;
 
-use Deepr\components\Collection;
-use Deepr\components\IComponent;
-use Deepr\components\ILoadable;
-
 /**
  * Class Movies
  * Interface ILoadable is required if you want to access collection items with "[]"
@@ -13,7 +9,7 @@ use Deepr\components\ILoadable;
  * @author Michal Stefanak
  * @link https://github.com/stefanak-michal/deepr-php
  */
-class Movies extends Collection implements ILoadable
+class Movies
 {
     /**
      * {"movies": {"count": true}}
@@ -27,24 +23,40 @@ class Movies extends Collection implements ILoadable
     }
 
     /**
-     * This method is implemented by interface ILoadable and it's called on "[]"
-     * {"movies": {"[]": []}}
+     * RPC method to get movie by title
+     * {"movies": {"getByTitle": {"()": ["The Matrix"]}}}
+     * @param string $title
+     * @return Movie
+     */
+    public function getByTitle(string $title): Movie
+    {
+        $row = Database::getMovieByTitle($title);
+        $movie = new Movie();
+        $movie->_id = $row['_id'];
+        $movie->title = $row['title'];
+        $movie->released = $row['released'];
+        $movie->tagline = $row['tagline'];
+        return $movie;
+    }
+
+    /**
+     * This magic method is called on "[]" array access
      * @param int $offset
      * @param int|null $length
-     * @return Collection
-     * @see \Deepr\tests\classes\Movie
+     * @return array
      */
-    public function load(int $offset, ?int $length): Collection
+    public function __invoke(int $offset, ?int $length): array
     {
-        $items = new Collection();
+        $output = [];
         foreach (array_slice(Database::getMovies(), $offset, $length) as $row) {
             $movie = new Movie();
             $movie->_id = $row['_id'];
             $movie->title = $row['title'];
             $movie->released = $row['released'];
             $movie->tagline = $row['tagline'];
-            $items->add($movie);
+            $output[] = $movie;
         }
-        return $items;
+        return $output;
     }
+
 }

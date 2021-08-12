@@ -2,7 +2,7 @@
 
 PHP API library following Deepr specification.
 
-![](https://img.shields.io/badge/phpunit-passed-success) ![](https://img.shields.io/badge/coverage-97%25-green) ![](https://img.shields.io/github/stars/stefanak-michal/deepr-php) ![](https://img.shields.io/packagist/dt/stefanak-michal/deepr-php) ![](https://img.shields.io/github/v/release/stefanak-michal/deepr-php) ![](https://img.shields.io/github/commits-since/stefanak-michal/deepr-php/latest)
+![phpunit](https://img.shields.io/badge/phpunit-passed-success) ![coverage](https://img.shields.io/badge/coverage-94%25-green) ![stars](https://img.shields.io/github/stars/stefanak-michal/deepr-php) ![downloads](https://img.shields.io/packagist/dt/stefanak-michal/deepr-php) ![release](https://img.shields.io/github/v/release/stefanak-michal/deepr-php) ![commits](https://img.shields.io/github/commits-since/stefanak-michal/deepr-php/latest)
 
 ## Usage
 
@@ -10,7 +10,7 @@ Check [wiki](https://github.com/stefanak-michal/deepr-php/wiki) for more informa
 
 ## Requirements
 
-- PHP >= 7.1
+- PHP >= 7.2
 
 ## Installation
 

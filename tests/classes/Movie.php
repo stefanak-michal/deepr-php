@@ -2,16 +2,13 @@
 
 namespace Deepr\tests\classes;
 
-use Deepr\components\Collection;
-use Deepr\components\IComponent;
-
 /**
  * Class Movie
  * @package Deepr\tests\classes
  * @author Michal Stefanak
  * @link https://github.com/stefanak-michal/deepr-php
  */
-class Movie extends Collection
+class Movie
 {
     public $_id;
     /**
@@ -24,30 +21,34 @@ class Movie extends Collection
      * @var int
      */
     public $released;
+    /**
+     * {"movies": {"[]":[], "tagline": true}}
+     * @var string
+     */
     public $tagline;
 
     /**
-     * @var Collection
+     * @var array
      */
     private $actors;
 
     /**
      * RPC method to get actors of movie
      * {"movies":{"[]":[],"=>":{"getActors":{"()":[]}}}}
-     * @return IComponent
+     * @return array
      * @see \Deepr\tests\classes\Person
      */
-    public function getActors(): IComponent
+    public function getActors(): array
     {
         if (is_null($this->actors)) {
-            $this->actors = new Collection();
+            $this->actors = [];
             foreach (Database::getMovieActors($this->_id) as $row) {
                 $person = new Person();
                 $person->_id = $row['_id'];
                 $person->name = $row['name'];
                 $person->born = $row['born'];
                 $person->_movies = $row['_movies'];
-                $this->actors->add($person);
+                $this->actors[] = $person;
             }
         }
 
@@ -55,9 +56,10 @@ class Movie extends Collection
     }
 
     /**
-     * RPC method to get movie by title. Use it with source values call.
+     * RPC method to get movie by title.
      * {"<=": {"_type": "Movie"}, "byTitle": {"()": ["The Matrix"]}}
      * @param string $title
+     * @return Movie
      * @see \Deepr\tests\classes\Movie
      */
     public function byTitle(string $title)
@@ -69,6 +71,7 @@ class Movie extends Collection
             $this->released = $row['released'];
             $this->tagline = $row['tagline'];
         }
+        return $this;
     }
 
 }
